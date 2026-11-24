@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OPTICST NEXUS · Tanda Visual — Boutique de Lentes Yael</title>
+<meta name="description" content="Tanda Visual — Venta a plazos de Boutique de Lentes Yael, Sucursal Calle 4.">
+<meta name="theme-color" content="#0A0F2E">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="splashStart" hidden>
+  <div class="splash-card"><img src="logo-tanda-visual.png" alt="Tanda Visual"></div>
+</div>
+
+<main>
+<!-- ============ SETUP ============ -->
+<section class="view" id="view-setup" hidden>
+  <div class="card setup-card">
+    <div class="setup-logo"><img src="logo-nexus.png" alt="OPTICST NEXUS" style="max-width:180px"></div>
+    <h2>Conectar Tanda Visual</h2>
+    <p class="subtitle">Pega la URL del web app y el token de la App 2 (Tanda Visual). Son distintos a los de la App 1.</p>
+    <label>URL del web app (Apps Script)
+      <input id="setupUrl" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+    </label>
+    <label>Token (API_TOKEN)
+      <input id="setupToken" type="text" placeholder="64 caracteres" autocomplete="off">
+    </label>
+    <label class="check demo-toggle"><input id="setupDemo" type="checkbox"> Modo DEMO (datos de ejemplo, sin conectar)</label>
+    <div class="wizard-nav">
+      <button class="btn btn-primary" id="btnSetupGuardar" type="button">Guardar y conectar</button>
+    </div>
+    <p class="hint">La URL y el token se guardan solo en este teléfono. Para reconfigurar, desinstala y reinstala la app.</p>
+    <div id="setupError" class="error" hidden></div>
+  </div>
+</section>
+
+<!-- ============ PANEL DEL DÍA ============ -->
+<section class="view" id="view-home" hidden>
+  <h2>Panel del día</h2>
+  <p class="subtitle" id="panelFecha"></p>
+  <div class="dashboard-grid">
+    <button class="dash-card dash-hero-big" id="btnNuevaTanda" type="button">
+      <span class="dash-icon">＋</span><span class="dash-title">Nueva tanda</span>
+      <span class="dash-sub">Registrar un cliente en el programa</span>
+    </button>
+    <button class="dash-card dash-hero-buscar" id="btnIrBuscar" type="button">
+      <span class="dash-icon">⌕</span><span class="dash-title">Buscar cliente</span>
+      <span class="dash-sub">Ver su tarjeta y sus tandas</span>
+    </button>
+    <button class="dash-card dash-hero-abono" id="btnIrRegistrarPago" type="button">
+      <span class="dash-icon">$</span><span class="dash-title">Registrar pago</span>
+      <span class="dash-sub">Efectivo o transferencia</span>
+    </button>
+  </div>
+  <div class="card">
+    <h3>Pagan hoy</h3>
+    <div id="panelPaganHoy" class="list"></div>
+  </div>
+  <div class="card">
+    <h3>Atrasados</h3>
+    <div id="panelAtrasados" class="list"></div>
+  </div>
+  <div class="card">
+    <h3>Reciben esta semana</h3>
+    <p class="hint">Entrega hasta el viernes, de 3:00 a 9:00 pm. Al recoger, el cliente hace su pago de la semana.</p>
+    <div id="panelReciben" class="list"></div>
+  </div>
+  <div class="home-utils">
+    <button class="btn btn-ghost" id="btnConfig" type="button">Configuración</button>
+    <span class="badge" id="homeVersion">Tanda Visual v1.0.0</span>
+  </div>
+</section>
+
+<!-- ============ NUEVA TANDA (wizard) ============ -->
+<section class="view" id="view-wizard" hidden>
+  <h2>Nueva tanda</h2>
+  <ol class="steps" id="wizardSteps">
+    <li data-paso="1" class="active">1 · Cliente</li>
+    <li data-paso="2">2 · Fotos y firma</li>
+    <li data-paso="3">3 · Optometría</li>
+    <li data-paso="4">4 · Producto y tanda</li>
+    <li data-paso="5">5 · Revisar</li>
+  </ol>
+  <div id="wizardError" class="error" hidden></div>
+
+  <!-- Paso 1: Cliente -->
+  <div class="wizard-paso" data-paso="1">
+    <div class="card">
+      <h3>Cliente</h3>
+      <label>Buscar cliente existente
+        <input id="wBuscarCliente" type="text" placeholder="Escribe el nombre…" autocomplete="off">
+      </label>
+      <div id="wBuscarResultados" class="list"></div>
+      <p class="hint">Si el cliente ya está en el programa, selecciónalo: su color e historial se usan para asignar el número. Si es nuevo, llena los datos.</p>
+      <label>Nombre completo *
+        <input id="wNombre" type="text" autocomplete="off">
+      </label>
+      <div class="grid2">
+        <label>Fecha de nacimiento
+          <input id="wFechaNac" type="date">
+        </label>
+        <label>Teléfono (WhatsApp)
+          <input id="wTelefono" type="tel" inputmode="tel" autocomplete="off">
+        </label>
+        <label>Ocupación
+          <input id="wOcupacion" type="text" autocomplete="off">
+        </label>
+        <label>Sexo
+          <select id="wSexo"><option value="">—</option><option>Masculino</option><option>Femenino</option></select>
+        </label>
+      </div>
+      <p class="hint" id="wClienteInfo"></p>
+    </div>
+  </div>
+
+  <!-- Paso 2: Fotos y firma -->
+  <div class="wizard-paso" data-paso="2" hidden>
+    <div class="card">
+      <h3>Fotos y firma</h3>
+      <p class="hint">La foto del INE es SOLO POR EL FRENTE, por seguridad del cliente. El reverso NO se fotografía: el cliente lo muestra en físico para cotejar la firma de manera visual.</p>
+      <label>Foto del INE (frente) *
+        <input id="wIneFrente" type="file" accept="image/*" capture="environment">
+      </label>
+      <div id="wInePreview" class="foto-preview"></div>
+      <label>Foto del rostro *
+        <input id="wRostro" type="file" accept="image/*" capture="user">
+      </label>
+      <div id="wRostroPreview" class="foto-preview"></div>
+      <h3>Firma digital — aceptación de términos *</h3>
+      <p class="hint">El cliente firma aceptando el reglamento y los términos. No es para litigio: es prueba de aceptación — si dice que no sabía, se le muestra su firma.</p>
+      <canvas id="wFirmaTerminos" class="firma-pad" width="600" height="220"></canvas>
+      <div class="wizard-nav">
+        <button class="btn btn-secondary" id="wFirmaLimpiar" type="button">Limpiar firma</button>
+      </div>
+      <label class="check"><input id="wLeyendaReverso" type="checkbox"> El cliente mostró el reverso de su INE en físico y se cotejó su firma de manera visual (el reverso no se fotografía ni se guarda).</label>
+    </div>
+  </div>
+
+  <!-- Paso 3: Optometría -->
+  <div class="wizard-paso" data-paso="3" hidden>
+    <div class="card">
+      <h3>Optometría</h3>
+      <p class="hint">Apartado propio de Tanda Visual, igual que en la App 1: misma graduación, mismos rangos, misma agudeza visual y lensometría.</p>
+      <fieldset>
+        <legend>¿Usa lentes?</legend>
+        <div class="radio-cards">
+          <label class="radio-card"><input type="radio" name="wUsaLentes" value="Sí"> Sí <small>Se toma la lensometría de sus lentes actuales</small></label>
+          <label class="radio-card"><input type="radio" name="wUsaLentes" value="No"> No</label>
+        </div>
+      </fieldset>
+      <fieldset id="wLensometriaBox" hidden>
+        <legend>Lensometría (de los lentes que usa)</legend>
+        <div class="rx-row"><span>O.D.</span>
+          <select id="wLensEsfOD" aria-label="Lensometría esfera O.D."></select>
+          <select id="wLensCilOD" aria-label="Lensometría cilindro O.D."></select>
+          <select id="wLensEjeOD" aria-label="Lensometría eje O.D."></select>
+        </div>
+        <div class="rx-row"><span>O.I.</span>
+          <select id="wLensEsfOI" aria-label="Lensometría esfera O.I."></select>
+          <select id="wLensCilOI" aria-label="Lensometría cilindro O.I."></select>
+          <select id="wLensEjeOI" aria-label="Lensometría eje O.I."></select>
+        </div>
+        <div class="grid2">
+          <label>Tratamientos <input id="wLensTratamientos" type="text" autocomplete="off"></label>
+          <label>Diseño del lente <select id="wLensDiseno"></select></label>
+          <label>Add <select id="wLensAdd"></select></label>
+          <label>DNP <input id="wLensDnp" type="text" inputmode="decimal" autocomplete="off"></label>
+        </div>
+      </fieldset>
+      <label>Motivo de consulta <select id="wMotivo"></select></label>
+      <fieldset>
+        <legend>Antecedentes</legend>
+        <label>Tipo de lente que usa <select id="wAntTipo"><option value="">—</option><option>Monofocal</option><option>Bifocal</option><option>Progresivo</option><option>Ninguno</option></select></label>
+        <label class="check"><input id="wAntDiabetes" type="checkbox"> Diabetes</label>
+        <label class="check"><input id="wAntHipertension" type="checkbox"> Hipertensión</label>
+        <label class="check"><input id="wAntMigrana" type="checkbox"> Migraña</label>
+      </fieldset>
+      <fieldset>
+        <legend>Agudeza visual (Snellen)</legend>
+        <div class="av-grid">
+          <label>Sin Rx · O.D. <select id="wAvSinOD"></select></label>
+          <label>Sin Rx · O.I. <select id="wAvSinOI"></select></label>
+          <label>Sin Rx · A/O <select id="wAvSinAO"></select></label>
+          <label>Con Rx · O.D. <select id="wAvConOD"></select></label>
+          <label>Con Rx · O.I. <select id="wAvConOI"></select></label>
+          <label>Con Rx · A/O <select id="wAvConAO"></select></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Graduación (refracción subjetiva)</legend>
+        <div class="rx-row"><span>O.D.</span>
+          <select id="wGradEsfOD" aria-label="Graduación esfera O.D."></select>
+          <select id="wGradCilOD" aria-label="Graduación cilindro O.D."></select>
+          <select id="wGradEjeOD" aria-label="Graduación eje O.D."></select>
+        </div>
+        <div class="rx-row"><span>O.I.</span>
+          <select id="wGradEsfOI" aria-label="Graduación esfera O.I."></select>
+          <select id="wGradCilOI" aria-label="Graduación cilindro O.I."></select>
+          <select id="wGradEjeOI" aria-label="Graduación eje O.I."></select>
+        </div>
+        <div class="grid2">
+          <label>Add <select id="wGradAdd"></select></label>
+          <label>DNP <input id="wDnp" type="text" inputmode="decimal" autocomplete="off"></label>
+        </div>
+      </fieldset>
+      <label>Diagnóstico refractivo <input id="wDiagnostico" type="text" autocomplete="off"></label>
+      <label>Indicaciones <input id="wIndicaciones" type="text" autocomplete="off"></label>
+      <label>Recomendación <input id="wRecomendacion" type="text" autocomplete="off"></label>
+    </div>
+  </div>
+
+  <!-- Paso 4: Producto y tanda -->
+  <div class="wizard-paso" data-paso="4" hidden>
+    <div class="card">
+      <h3>El producto — armazón y lente</h3>
+      <p class="hint">El total es el precio de los lentes (armazón + lente) dividido entre 10 pagos semanales. Se elige el armazón y el lente con sus precios definidos del catálogo; la app muestra el total definido y tú tecleas el total final (precio de venta).</p>
+      <fieldset>
+        <legend>Armazón</legend>
+        <label>Modelo del catálogo
+          <select id="wArmazonCatalogo"><option value="">— Capturar a mano —</option></select>
+        </label>
+        <div class="grid2">
+          <label>Modelo <input id="wArmazonModelo" type="text" autocomplete="off"></label>
+          <label>Marca <input id="wArmazonMarca" type="text" autocomplete="off"></label>
+          <label>Material <select id="wArmazonMaterial"></select></label>
+          <label>Diseño <select id="wArmazonDiseno"></select></label>
+          <label>Precio definido del armazón ($)
+            <input id="wArmazonPrecio" type="number" min="0" step="1" inputmode="decimal" placeholder="0">
+          </label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Lente</legend>
+        <label>Concepto del catálogo
+          <select id="wLenteConcepto"><option value="">— Capturar a mano —</option></select>
+        </label>
+        <div class="grid2">
+          <label>Material <select id="wLenteMaterial"></select></label>
+          <label>Diseño <select id="wLenteDiseno"></select></label>
+          <label>Tratamiento <select id="wLenteTratamiento"></select></label>
+          <label>Precio definido del lente ($)
+            <input id="wLentePrecio" type="number" min="0" step="1" inputmode="decimal" placeholder="0">
+          </label>
+        </div>
+      </fieldset>
+      <div class="grid2">
+        <label>Total definido (armazón + lente) ($)
+          <input id="wPrecioDefinido" type="text" readonly>
+        </label>
+        <label>Total final — precio de venta ($) *
+          <input id="wTotalFinal" type="number" min="1" step="1" inputmode="decimal" placeholder="Ej. 2499" required>
+        </label>
+      </div>
+      <div id="wPlanPreview" class="plan-preview"></div>
+    </div>
+    <div class="card">
+      <h3>La tanda</h3>
+      <label>Fecha de inicio
+        <input id="wFechaInicio" type="date">
+      </label>
+      <p class="hint">Las fechas límite son los lunes. La primera es el primer lunes en o después de la fecha de inicio. La entrega estimada es inicio + número de semanas (viernes de la semana de entrega).</p>
+      <label>Número de tanda — semana de entrega *</label>
+      <div id="wNumeroBotones" class="numero-botones"></div>
+      <p class="hint" id="wNumeroInfo"></p>
+      <div id="wEntregaPreview" class="plan-preview"></div>
+    </div>
+  </div>
+
+  <!-- Paso 5: Revisar -->
+  <div class="wizard-paso" data-paso="5" hidden>
+    <div class="card">
+      <h3>Revisar y crear la tanda</h3>
+      <div id="wResumen"></div>
+      <p class="hint">Al crear la tanda se genera el paquete para el cliente: carta de bienvenida con su nombre, reglamento y términos, y la tarjeta de EJEMPLO (sin validez como comprobante). La tarjeta REAL se genera a partir del primer pago.</p>
+      <div id="wCrearError" class="error" hidden></div>
+    </div>
+  </div>
+
+  <div class="wizard-nav">
+    <button class="btn btn-secondary" id="wBtnAtras" type="button">← Atrás</button>
+    <button class="btn btn-primary" id="wBtnSiguiente" type="button">Siguiente →</button>
+    <button class="btn btn-primary" id="wBtnCrear" type="button" hidden>Crear tanda</button>
+  </div>
+</section>
+
+<!-- ============ BUSCAR CLIENTE ============ -->
+<section class="view" id="view-buscar" hidden>
+  <h2>Buscar cliente</h2>
+  <div class="card">
+    <label>Nombre del cliente
+      <input id="buscarInput" type="text" placeholder="Escribe el nombre…" autocomplete="off">
+    </label>
+    <div id="buscarResultados" class="list"></div>
+  </div>
+  <div id="buscarFicha"></div>
+</section>
+
+<!-- ============ TANDAS ============ -->
+<section class="view" id="view-tandas" hidden>
+  <h2>Tandas</h2>
+  <div class="card">
+    <div class="grid2">
+      <label>Buscar <input id="tandasBuscar" type="text" placeholder="Nombre o folio…" autocomplete="off"></label>
+      <label>Estado
+        <select id="tandasEstado"><option value="">Todas</option><option>Activa</option><option>Entregada</option><option>Completada</option><option>Cerrada</option></select>
+      </label>
+    </div>
+    <div id="tandasLista" class="list"></div>
+  </div>
+</section>
+
+<!-- ============ FICHA DE TANDA ============ -->
+<section class="view" id="view-ficha" hidden>
+  <h2 id="fichaTitulo">Tanda</h2>
+  <div id="fichaContenido"></div>
+  <div class="card">
+    <h3>Acciones</h3>
+    <div class="grid2">
+      <button class="btn btn-primary" id="btnFichaPago" type="button">Registrar pago</button>
+      <button class="btn btn-primary" id="btnFichaTarjeta" type="button">Ver tarjeta</button>
+      <button class="btn btn-secondary" id="btnFichaReglamento" type="button">Ver reglamento</button>
+      <button class="btn btn-secondary" id="btnFichaEntrega" type="button">Registrar entrega</button>
+    </div>
+    <h3>Mensajes de WhatsApp</h3>
+    <p class="hint">Pre-escritos por la app, con el cliente correcto. Solo toca enviar.</p>
+    <div class="grid2">
+      <button class="btn btn-secondary" id="btnMsgRecordatorio" type="button">Recordatorio</button>
+      <button class="btn btn-secondary" id="btnMsgAtraso" type="button">Atraso</button>
+      <button class="btn btn-secondary" id="btnMsgRecoger" type="button">Ya puede recoger</button>
+      <button class="btn btn-secondary" id="btnMsgTarjeta" type="button">Enviar tarjeta</button>
+    </div>
+    <div id="fichaEvaluar"></div>
+  </div>
+  <button class="btn btn-ghost" id="btnFichaVolver" type="button">← Volver a Tandas</button>
+</section>
+
+<!-- ============ REGISTRAR PAGO ============ -->
+<section class="view" id="view-pago" hidden>
+  <h2>Registrar pago</h2>
+  <div class="card">
+    <label>Tanda
+      <select id="pagoTanda"></select>
+    </label>
+    <div id="pagoInfo"></div>
+    <label>Semana a pagar
+      <select id="pagoSemana"></select>
+    </label>
+    <label>Método *</label>
+    <div class="radio-cards">
+      <label class="radio-card"><input type="radio" name="pagoMetodo" value="Efectivo" checked> Efectivo <small>El cliente recibe la tarjeta con el abono en ese momento, por WhatsApp</small></label>
+      <label class="radio-card"><input type="radio" name="pagoMetodo" value="Transferencia"> Transferencia <small>El cliente lo reporta por WhatsApp con el comprobante</small></label>
+    </div>
+    <div id="pagoComprobanteBox" hidden>
+      <label>Comprobante de transferencia (imagen) *
+        <input id="pagoComprobante" type="file" accept="image/*">
+      </label>
+      <div id="pagoComprobantePreview" class="foto-preview"></div>
+    </div>
+    <p class="hint">La fecha del pago la pone el sistema (hoy). Horario hábil para reportar pagos: lunes a sábado, 9:00 am a 9:00 pm. Si el cliente reporta a las 11:59 del último día, se registra al día siguiente y la app lo toma como atraso.</p>
+    <div id="pagoError" class="error" hidden></div>
+    <div class="wizard-nav">
+      <button class="btn btn-primary" id="btnPagoGuardar" type="button">Guardar pago</button>
+    </div>
+    <div id="pagoResultado"></div>
+  </div>
+</section>
+
+<!-- ============ ENTREGA ============ -->
+<section class="view" id="view-entrega" hidden>
+  <h2>Registrar entrega</h2>
+  <div class="card">
+    <label>Tanda
+      <select id="entregaTanda"></select>
+    </label>
+    <div id="entregaInfo"></div>
+    <p class="hint">Entrega hasta el viernes de la semana de entrega, de 3:00 a 9:00 pm. Al recoger, el cliente hace su pago de la semana. Si tiene pagos vencidos, la entrega se recorre hasta ponerse al corriente.</p>
+    <h3>Firma digital — recepción de los lentes *</h3>
+    <p class="hint">El cliente firma confirmando que recibió sus lentes. Prueba de entrega: si luego dice que no los recibió, se le muestra su firma.</p>
+    <canvas id="entregaFirma" class="firma-pad" width="600" height="220"></canvas>
+    <div class="wizard-nav">
+      <button class="btn btn-secondary" id="entregaFirmaLimpiar" type="button">Limpiar firma</button>
+      <button class="btn btn-primary" id="btnEntregaGuardar" type="button">Confirmar entrega</button>
+    </div>
+    <div id="entregaError" class="error" hidden></div>
+    <div id="entregaResultado"></div>
+  </div>
+</section>
+
+<!-- ============ RESUMEN ============ -->
+<section class="view" id="view-resumen" hidden>
+  <h2>Resumen</h2>
+  <div class="card">
+    <label>Periodo
+      <select id="resumenPeriodo"><option value="semana">Esta semana</option><option value="mes" selected>Este mes</option><option value="anio">Este año</option></select>
+    </label>
+    <div id="resumenContenido"></div>
+  </div>
+</section>
+
+<!-- ============ DOCUMENTO (reglamento / tarjeta) ============ -->
+<section class="view" id="view-doc" hidden>
+  <div class="doc-toolbar">
+    <button class="btn btn-secondary" id="btnDocVolver" type="button">← Volver</button>
+    <button class="btn btn-primary" id="btnDocImprimir" type="button">Imprimir / PDF</button>
+    <button class="btn btn-primary" id="btnDocCompartir" type="button" hidden>Compartir por WhatsApp</button>
+  </div>
+  <div id="docArea"></div>
+</section>
+</main>
+
+<nav class="bottom-nav">
+  <div class="nav-group">
+    <button class="nav-item" data-view="home" type="button"><span class="nav-icon">⌂</span>Inicio</button>
+    <button class="nav-item" data-view="tandas" type="button"><span class="nav-icon">▦</span>Tandas</button>
+  </div>
+  <div class="nav-spacer"></div>
+  <div class="nav-group">
+    <button class="nav-item" data-view="buscar" type="button"><span class="nav-icon">⌕</span>Buscar</button>
+    <button class="nav-item" data-view="resumen" type="button"><span class="nav-icon">≡</span>Resumen</button>
+  </div>
+  <button class="nav-fab" id="navFab" type="button" aria-label="Nueva tanda">
+    <span class="nav-fab-circle">＋</span><span class="nav-fab-label">Nueva tanda</span>
+  </button>
+</nav>
+
+<div id="banner" class="banner" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
