@@ -1,8 +1,11 @@
-/* TANDA VISUAL v2.0.0 — Boutique de Lentes Yael protagoniza.
+/* TANDA VISUAL v2.0.2 — Boutique de Lentes Yael protagoniza.
    Paleta Yael (manual de marca): Turquesa #40C5D2 · Lila #9076DA ·
    Negro #000000 · Blanco #FFFFFF. El logo de Tanda Visual (lentes +
    calendario + $) es solo la marca de la app: splash e icono.
-   Desarrollador: Caremi Sistems Technology. */
+   Desarrollador: Caremi Sistems Technology.
+   v2.0.2: iconografía con color (barra inferior), botones más
+   estilizados, icono de la app en 3D, y órdenes de trabajo para el
+   Laboratorio Óptico Luna (solo ahí sale Luna, como en la App 1). */
 /* Orbitron variable (400-900), solo latin, para el nombre de la app en el splash. */
 @font-face{font-family:'Orbitron';font-style:normal;font-weight:400 900;font-display:swap;src:url(fonts/orbitron-latin.woff2) format('woff2')}
 :root{
@@ -85,18 +88,21 @@ label input,label select{font-weight:400}
 input,select,textarea{width:100%;padding:.7rem .75rem;min-height:48px;border:1px solid #cfc6e6;border-radius:10px;font-size:1rem;margin-top:.25rem;background:#fff;color:var(--ink)}
 input:focus,select:focus{outline:2px solid var(--purple);border-color:var(--purple)}
 input[readonly]{background:var(--purple-light)}
-/* ---------- Botones grandes tipo 3D (degradado + relieve + sombra) ---------- */
+/* ---------- Botones grandes tipo 3D (degradado + relieve + sombra) ----------
+   v2.0.2: más estilizados — degradado con parada intermedia más
+   profunda, sombra en capas (borde 3D + difusa + brillo superior) y
+   retroalimentación de presión más marcada (se hunde y se achica). */
 .btn{border:0;border-radius:12px;padding:.7rem 1.15rem;min-height:48px;font-size:.98rem;font-weight:700;cursor:pointer;box-shadow:0 3px 0 rgba(36,31,49,.18);transition:transform .06s ease,box-shadow .06s ease,filter .15s ease}
 .btn:active{transform:translateY(3px) scale(.97);box-shadow:0 1px 0 rgba(36,31,49,.18);filter:brightness(.96)}
-.btn-primary{background:var(--grad-brand);color:#fff;box-shadow:0 4px 0 #5b4a8a,0 8px 16px rgba(144,118,218,.35),inset 0 1px 0 rgba(255,255,255,.45)}
-.btn-primary:hover{filter:brightness(1.07)}
-.btn-primary:active{box-shadow:0 1px 0 #5b4a8a,0 3px 8px rgba(144,118,218,.3),inset 0 1px 0 rgba(255,255,255,.45)}
-.btn-secondary{background:#fff;color:var(--purple-dark);border:1.5px solid var(--purple);box-shadow:0 3px 0 #d9cdf5}
+.btn-primary{background:linear-gradient(135deg,#2EC5D2 0%,#40C5D2 28%,#6f55b8 68%,#9076DA 100%);color:#fff;box-shadow:0 4px 0 #4a3a78,0 10px 20px rgba(64,197,210,.38),0 4px 10px rgba(144,118,218,.35),inset 0 1px 0 rgba(255,255,255,.55),inset 0 -2px 0 rgba(10,15,31,.18)}
+.btn-primary:hover{filter:brightness(1.08)}
+.btn-primary:active{transform:translateY(4px) scale(.96);box-shadow:0 1px 0 #4a3a78,0 3px 8px rgba(144,118,218,.3),inset 0 1px 0 rgba(255,255,255,.55)}
+.btn-secondary{background:linear-gradient(180deg,#fff 0%,#f4f0fc 100%);color:var(--purple-dark);border:1.5px solid var(--purple);box-shadow:0 3px 0 #c9b8ec,0 5px 12px rgba(144,118,218,.22),inset 0 1px 0 rgba(255,255,255,.9)}
 .btn-secondary:hover{background:var(--purple-light)}
-.btn-secondary:active{box-shadow:0 1px 0 #d9cdf5}
+.btn-secondary:active{transform:translateY(3px) scale(.97);box-shadow:0 1px 0 #c9b8ec,0 2px 6px rgba(144,118,218,.2)}
 .btn-ghost{background:rgba(255,255,255,.16);color:#fff}
-main .btn-ghost{background:#fff;color:var(--purple-dark);border:1.5px solid var(--purple);box-shadow:0 3px 0 #d9cdf5}
-main .btn-ghost:active{box-shadow:0 1px 0 #d9cdf5}
+main .btn-ghost{background:linear-gradient(180deg,#fff 0%,#f4f0fc 100%);color:var(--purple-dark);border:1.5px solid var(--purple);box-shadow:0 3px 0 #c9b8ec,0 5px 12px rgba(144,118,218,.22)}
+main .btn-ghost:active{transform:translateY(3px) scale(.97);box-shadow:0 1px 0 #c9b8ec}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
 .row .btn{flex:none}
@@ -143,18 +149,31 @@ main .btn-ghost:active{box-shadow:0 1px 0 #d9cdf5}
 .dash-link:hover{border-color:var(--purple);box-shadow:0 2px 8px rgba(144,118,218,.25)}
 .dash-link:active{transform:translateY(2px);box-shadow:0 1px 0 #e3ddf2}
 
-/* ---------- Menú inferior fijo tipo Cashi ---------- */
+/* ---------- Menú inferior fijo tipo Cashi ----------
+   v2.0.2: iconografía con color — cada ícono lleva su propio color
+   vivo de la familia Yael (turquesa → azul → lila → violeta), no
+   monocromo. El ícono es un SVG (fill currentColor) y la etiqueta
+   toma el color del ícono cuando está activo; el subrayado activo
+   sigue siendo el degradado Yael. */
 .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;align-items:stretch;background:#fff;border-top:1px solid var(--line);box-shadow:0 -4px 18px rgba(36,31,49,.12);padding:6px 2px calc(6px + env(safe-area-inset-bottom))}
 .bottom-nav[hidden]{display:none}
 .nav-group{flex:1;display:flex;justify-content:space-evenly;min-width:0}
 .nav-spacer{flex:0 0 78px}
 .nav-item{background:none;border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:1;min-width:0;font-size:.64rem;font-weight:700;color:var(--muted);padding:.3rem 0 .15rem;cursor:pointer;font-family:inherit;transition:transform .12s ease}
 .nav-item:active{transform:scale(.85)}
-.nav-item .nav-icon{font-size:1.35rem;line-height:1}
-.nav-item.active{color:var(--purple)}
+.nav-item .nav-icon{display:block;line-height:0}
+.nav-item .nav-icon svg{width:26px;height:26px;display:block;fill:currentColor;filter:drop-shadow(0 2px 2px rgba(36,31,49,.18))}
+.nav-inicio .nav-icon{color:#1BA8B8}
+.nav-tandas .nav-icon{color:#9076DA}
+.nav-buscar .nav-icon{color:#2E7BFF}
+.nav-resumen .nav-icon{color:#A020FF}
+.nav-inicio.active{color:#1BA8B8}
+.nav-tandas.active{color:#9076DA}
+.nav-buscar.active{color:#2E7BFF}
+.nav-resumen.active{color:#A020FF}
 .nav-item.active::after{content:'';width:22px;height:3px;border-radius:3px;background:linear-gradient(90deg,#40C5D2,#9076DA)}
 .nav-fab{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;font-family:inherit;padding:0}
-.nav-fab-circle{width:60px;height:60px;border-radius:50%;background:var(--grad-brand);color:#fff;font-size:2rem;line-height:52px;text-align:center;border:4px solid #fff;box-shadow:0 6px 16px rgba(144,118,218,.5),0 3px 0 rgba(10,15,31,.22),inset 0 1px 0 rgba(255,255,255,.45);transition:transform .12s ease}
+.nav-fab-circle{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#2EC5D2 0%,#40C5D2 30%,#6f55b8 70%,#9076DA 100%);color:#fff;font-size:2rem;line-height:52px;text-align:center;border:4px solid #fff;box-shadow:0 0 0 2px rgba(144,118,218,.35),0 8px 20px rgba(64,197,210,.45),0 4px 0 rgba(10,15,31,.25),inset 0 2px 0 rgba(255,255,255,.6),inset 0 -3px 0 rgba(10,15,31,.2);transition:transform .12s ease}
 .nav-fab-circle:active{transform:scale(.88) rotate(90deg)}
 .nav-fab:active .nav-fab-circle{transform:translateY(2px)}
 .nav-fab-label{font-size:.64rem;font-weight:700;color:var(--muted)}
@@ -177,6 +196,8 @@ legend{font-weight:700;color:var(--purple-dark);padding:0 .4rem}
 .check input{width:auto;margin:0}
 .rx-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.4rem}
 .rx-row select{font-size:.9rem;padding:.45rem .3rem}
+.rx-field{display:flex;flex-direction:column;gap:.15rem}
+.rx-field>span{font-size:.78rem;font-weight:700;color:var(--muted)}
 .av-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem .9rem}
 @media (max-width:600px){.av-grid{grid-template-columns:1fr}}
 .list{display:grid;gap:.6rem;margin-top:.7rem}
@@ -273,7 +294,7 @@ code{background:var(--purple-light);padding:.1rem .3rem;border-radius:5px}
 /* v2.3.2: marca de agua DENTRO de la tarjeta (antes iba en la hoja y
    quedaba hasta arriba, tapada por las tarjetas). Logo de Luna con sus
    colores, centrado en el recuadro, detrás del texto de la etiqueta. */
-.orden-label-wm{position:absolute;inset:0;background-image:url(logo-luna-fuerte.png);background-repeat:no-repeat;background-position:center;background-size:min(200px,85%) auto;opacity:.28;pointer-events:none;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+.orden-label-wm{position:absolute;inset:0;background-image:url(logo-luna.png);background-repeat:no-repeat;background-position:center;background-size:min(200px,85%) auto;opacity:.28;pointer-events:none;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 .orden-label>*:not(.orden-label-wm){position:relative;z-index:1}
 /* v2.3.3: la marca debe leerse COMPLETA dentro de la tarjeta — el
    encabezado de la tabla (th) tenía fondo lila opaco y tapaba justo

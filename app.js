@@ -1,7 +1,7 @@
 /* ==================================================================
    TANDA VISUAL — PWA (App 2, SEPARADA de la App 1)
    Boutique de Lentes Yael · Sucursal Calle 4 · Solo Calle 4 por ahora.
-   OPTICST NEXUS · Tanda Visual v2.0.0
+   OPTICST NEXUS · Tanda Visual v2.0.1
 
    Reglas (definición aprobada 2026-11-23):
    - Venta a plazos PERSONAL (no es tanda ni fondo común). 10 pagos
@@ -33,7 +33,7 @@
 'use strict';
 
 /* ---------------- Constantes ---------------- */
-var VERSION = '2.0.0';
+var VERSION = '2.0.2';
 var LS_URL = 'tv_api_url';
 var LS_TOKEN = 'tv_api_token';
 var LS_DEMO = 'tv_demo';
@@ -49,6 +49,19 @@ var NEGOCIO = {
   instagram: '@Opticasluna14'
 };
 var GARANTIAS = { adaptacion: 30, armazon: 6, tratamiento: 6 };
+/* ---------- Laboratorio Óptico Luna (SOLO órdenes de trabajo) ----------
+   Como en la App 1: Yael es el operador principal para la venta al
+   cliente; Luna es el operador de proceso, la entidad que elabora los
+   lentes. Por eso SOLO en las órdenes de trabajo sale Luna (nombre +
+   logo); todo lo demás sigue con Yael. Misma dirección y teléfonos de
+   Calle 4. El logo es logo-luna.png (copia del de la App 1, ya
+   transparente, 785x527). */
+var LABORATORIO = {
+  nombre: 'Laboratorio Óptico Luna',
+  direccion: NEGOCIO.direccion,
+  telefonos: NEGOCIO.telefonos,
+  logo: 'logo-luna.png'
+};
 var COLORES = {
   Verde: { etiqueta: 'Verde', clase: 'chip-estado-ok', desc: 'Al corriente' },
   Amarillo: { etiqueta: 'Amarillo', clase: 'chip-estado-amarillo', desc: '3 o más atrasos' },
@@ -211,7 +224,7 @@ var state = {
   panel: null, resumen: null,
   tandasCache: [],
   currentTanda: null, currentCliente: null,
-  currentDoc: null, // {kind: 'reglamento'|'tarjeta', tandaId}
+  currentDoc: null, // {kind: 'reglamento'|'tarjeta'|'orden', tandaId}
   wizard: null
 };
 
@@ -317,7 +330,13 @@ function demoTanda() {
       { idPago: 'PAG-0001', tandaId: 'TAN-0001', semana: 1, fecha: '2026-11-23', monto: plan.semanal, metodo: 'Efectivo', comprobante: '' },
       { idPago: 'PAG-0002', tandaId: 'TAN-0001', semana: 2, fecha: '2026-11-30', monto: plan.semanal, metodo: 'Efectivo', comprobante: '' }
     ],
-    optometria: null
+    // Optometría de ejemplo (DEMO) para que la orden de trabajo se vea
+    // completa: graduación, Add y DNP como los capturaría Alfredo.
+    optometria: { gradEsfOD: '-2.00', gradCilOD: '-0.50', gradEjeOD: '180',
+      gradEsfOI: '-2.50', gradCilOI: '-0.75', gradEjeOI: '10', gradAdd: '+2.00',
+      dnp: '63', lensEsfOD: '-2.00', lensCilOD: '-0.50', lensEjeOD: '180',
+      lensEsfOI: '-2.50', lensCilOI: '-0.75', lensEjeOI: '10', lensAdd: '+2.00',
+      lensDnp: '63' }
   };
   DEMO_TANDA.semanas[0].estado = 'Pagado'; DEMO_TANDA.semanas[0].fechaPago = '2026-11-23'; DEMO_TANDA.semanas[0].metodo = 'Efectivo';
   DEMO_TANDA.semanas[1].estado = 'Pagado'; DEMO_TANDA.semanas[1].fechaPago = '2026-11-30'; DEMO_TANDA.semanas[1].metodo = 'Efectivo';
@@ -492,15 +511,9 @@ function llenarDropdownsProducto() {
   fillSelect($('wLenteMaterial'), listasDe('Material_Lente'), true);
   fillSelect($('wLenteDiseno'), listasDe('Diseno_Lente'), true);
   fillSelect($('wLenteTratamiento'), listasDe('Tratamiento'), true);
-  // Catálogo de armazones (puede estar vacío: Alfredo aún no lo envía).
-  var selA = $('wArmazonCatalogo');
-  selA.innerHTML = '<option value="">— Capturar a mano —</option>';
-  (state.catalogos.armazones || []).forEach(function (a, i) {
-    var o = document.createElement('option');
-    o.value = String(i);
-    o.textContent = (a.modelo || '') + ' · ' + (a.marca || '') + ' — ' + money(a.precioDef);
-    selA.appendChild(o);
-  });
+  // Catálogo de armazones: sin desplegable (Alfredo 2026-11-23: el
+  // catálogo está vacío y siempre se captura a mano; el título del
+  // paso 4 lo dice. Si llega el catálogo, se repone el select).
   // Catálogo de lentes (29 conceptos de la lista de Alfredo).
   var selL = $('wLenteConcepto');
   selL.innerHTML = '<option value="">— Capturar a mano —</option>';
@@ -556,6 +569,7 @@ function renderPanel(d) {
     htmlRec += '<div class="list-item panel-item panel-item-' + String(r.color || 'Verde').toLowerCase() + '"><div class="row"><strong>' + esc(r.clienteNombre) + '</strong>' + colorChip(r.color) + '</div>' +
       '<small>Nº ' + r.numero + ' · entrega ' + fechaMX(r.entregaEstimada) + ' · de 3:00 a 9:00 pm</small>' +
       '<div class="row"><button class="btn btn-secondary" data-accion="ficha" data-tanda="' + esc(r.tandaId) + '">Ver tanda</button>' +
+      '<button class="btn btn-secondary" data-accion="orden" data-tanda="' + esc(r.tandaId) + '">Orden de trabajo</button>' +
       (d.esViernes ? '<a class="btn btn-ghost" href="' + waLink(r.telefono, mensajeRecoger(r)) + '" target="_blank" rel="noopener">Ya puede recoger</a>' : '') + '</div></div>';
   });
   $('panelReciben').innerHTML = htmlRec || '<p class="hint">Nadie recibe esta semana.</p>';
@@ -564,6 +578,7 @@ function renderPanel(d) {
     b.addEventListener('click', function () {
       if (b.dataset.accion === 'ficha') abrirFicha(b.dataset.tanda);
       if (b.dataset.accion === 'pago') abrirPago(b.dataset.tanda, b.dataset.semana);
+      if (b.dataset.accion === 'orden') abrirOrden(b.dataset.tanda);
     });
   });
 }
@@ -744,10 +759,10 @@ function iniciarWizard() {
   $('wLeyendaReverso').checked = false;
   $('wFechaInicio').value = hoyISO();
   $('wTotalFinal').value = '';
-  $('wArmazonPrecio').value = ''; $('wLentePrecio').value = '';
+  $('wArmazonPrecio').value = ''; $('wLentePrecio').value = ''; $('wCostoInversion').value = '';
   $('wPrecioDefinido').value = '';
   $('wArmazonModelo').value = ''; $('wArmazonMarca').value = '';
-  $('wLenteConcepto').value = ''; $('wArmazonCatalogo').value = '';
+  $('wLenteConcepto').value = '';
   $('wPlanPreview').innerHTML = ''; $('wEntregaPreview').innerHTML = '';
   $('wResumen').innerHTML = '';
   construirNumeroBotones();
@@ -841,6 +856,7 @@ function leerPaso4() {
   w.lenteDiseno = $('wLenteDiseno').value;
   w.lenteTratamiento = $('wLenteTratamiento').value;
   w.lentePrecio = num($('wLentePrecio').value, 0);
+  w.costoInversion = num($('wCostoInversion').value, 0);
   w.precioDefinido = redondear(w.armazonPrecio + w.lentePrecio);
   w.totalFinal = num($('wTotalFinal').value, 0);
   w.fechaInicio = $('wFechaInicio').value || hoyISO();
@@ -903,7 +919,7 @@ function renderResumenWizard() {
   var html = '<p><strong>Cliente:</strong> ' + esc(w.nombre) + (w.clienteExistente ? ' (existente, Nº ' + w.clienteId + ')' : ' (nuevo)') + ' · Color: ' + esc(w.colorCliente) + '</p>' +
     '<p><strong>Armazón:</strong> ' + esc(w.armazonModelo || '—') + ' · ' + esc(w.armazonMarca || '') + ' ' + esc(w.armazonMaterial || '') + ' ' + esc(w.armazonDiseno || '') + ' — ' + money(w.armazonPrecio) + '</p>' +
     '<p><strong>Lente:</strong> ' + esc(w.lenteConcepto || '—') + ' ' + esc(w.lenteMaterial || '') + ' ' + esc(w.lenteDiseno || '') + ' ' + esc(w.lenteTratamiento || '') + ' — ' + money(w.lentePrecio) + '</p>' +
-    '<p><strong>Total definido:</strong> ' + money(w.precioDefinido) + ' · <strong>Total final (precio de venta):</strong> ' + money(w.totalFinal) + '</p>' +
+    '<p><strong>Total definido:</strong> ' + money(w.precioDefinido) + ' · <strong>Total final (precio de venta):</strong> ' + money(w.totalFinal) + ' · <strong>Costo final de inversión:</strong> ' + money(w.costoInversion) + '</p>' +
     (plan ? '<p><strong>Plan:</strong> 9 pagos de ' + money(plan.semanal) + ' + último de ' + money(plan.ultimo) + '</p>' : '') +
     '<p><strong>Número:</strong> ' + (w.numero || '—') + ' · <strong>Inicio:</strong> ' + fechaMX(w.fechaInicio) + ' · <strong>Entrega estimada:</strong> ' + fechaMX(entrega) + '</p>' +
     '<p><strong>Graduación:</strong> O.D. ' + fmtGrad(w.optometria.gradEsfOD) + ' / ' + fmtGrad(w.optometria.gradCilOD) + ' x ' + (w.optometria.gradEjeOD || '—') +
@@ -944,7 +960,7 @@ function crearTanda() {
       armazonPrecio: w.armazonPrecio,
       lenteConcepto: w.lenteConcepto, lenteMaterial: w.lenteMaterial,
       lenteDiseno: w.lenteDiseno, lenteTratamiento: w.lenteTratamiento,
-      lentePrecio: w.lentePrecio
+      lentePrecio: w.lentePrecio, costoInversion: w.costoInversion
     });
   }).then(function (r) {
     showOk('Tanda ' + r.id + ' creada. Nº ' + r.numero + ', entrega ' + fechaMX(r.entregaEstimada) + '.');
@@ -1030,20 +1046,13 @@ function cablearWizard() {
     r.addEventListener('change', function () { $('wLensometriaBox').hidden = (r.value !== 'Sí'); });
   });
   // Producto: catálogos y totales.
-  $('wArmazonCatalogo').addEventListener('change', function () {
-    var a = (state.catalogos.armazones || [])[Number(this.value)];
-    if (!a) return;
-    $('wArmazonModelo').value = a.modelo || '';
-    $('wArmazonMarca').value = a.marca || '';
-    $('wArmazonMaterial').value = a.material || '';
-    $('wArmazonDiseno').value = a.diseno || '';
-    $('wArmazonPrecio').value = a.precioDef || '';
-    actualizarPlanPreview();
-  });
   $('wLenteConcepto').addEventListener('change', function () {
     var l = (state.catalogos.lentes || [])[Number(this.value)];
     if (!l) return;
-    $('wLentePrecio').value = l.precioEstimado || '';
+    // El precio estimado del concepto es el COSTO estimado de la mica:
+    // va a Costo final de inversión (donde se corrige al costo real),
+    // NUNCA al precio del lente (mismo error que App 1 v2.3.14).
+    $('wCostoInversion').value = l.precioEstimado || '';
     actualizarPlanPreview();
   });
   $('wArmazonPrecio').addEventListener('input', actualizarPlanPreview);
@@ -1218,6 +1227,7 @@ function abrirFicha(tandaId) {
 function cablearFicha() {
   $('btnFichaPago').addEventListener('click', function () { if (state.currentTanda) abrirPago(state.currentTanda.id); });
   $('btnFichaTarjeta').addEventListener('click', function () { if (state.currentTanda) abrirTarjeta(state.currentTanda.id); });
+  $('btnFichaOrden').addEventListener('click', function () { if (state.currentTanda) abrirOrden(state.currentTanda.id); });
   $('btnFichaReglamento').addEventListener('click', function () { if (state.currentTanda) abrirReglamento(state.currentTanda.id); });
   $('btnFichaEntrega').addEventListener('click', function () { if (state.currentTanda) abrirEntrega(state.currentTanda.id); });
   $('btnFichaVolver').addEventListener('click', function () { show('tandas'); cargarTandas(); });
@@ -1409,7 +1419,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 /* ---------------- Documentos: reglamento y tarjeta ---------------- */
-var PAGE_SIZES = { reglamento: 'letter', tarjeta: 'letter' };
+var PAGE_SIZES = { reglamento: 'letter', tarjeta: 'letter', orden: 'letter' };
 function aplicarTamanoPagina(kind) {
   var st = document.getElementById('pageSizeStyle');
   if (!st) {
@@ -1532,6 +1542,63 @@ function abrirTarjeta(tandaId, autoShare) {
     show('doc');
     if (autoShare) setTimeout(compartirDoc, 400);
   }).catch(function (e) { showError('No se pudo abrir la tarjeta: ' + e.message); });
+}
+/* ---------------- Orden de trabajo (Laboratorio Óptico Luna) ----------
+   v2.0.2: la App 2 NO tenía órdenes de trabajo. Se agregan espejo de la
+   App 1: SOLO en la orden sale Laboratorio Óptico Luna (nombre + logo);
+   en ningún lado aparece "Boutique de Lentes Yael" dentro de la orden.
+   La orden se genera al registrar la tanda: los datos ya están
+   guardados (graduación de la optometría + armazón y lente del
+   producto), no se vuelve a teclear nada. NO requiere cambio de
+   backend: getTanda ya trae tanda + cliente + optometría.
+   Una sola etiqueta por tanda (la App 2 no tiene proveedor para
+   agrupar). Si no hay graduación, la etiqueta muestra el aviso
+   visible en vez de guiones silenciosos. */
+function gradOrdenVacia(o) {
+  if (!o) return true;
+  return !o.gradEsfOD && !o.gradCilOD && !o.gradEsfOI && !o.gradCilOI && !o.gradAdd;
+}
+function docOrdenHeadHTML() {
+  return '<div class="doc-head doc-head-luna"><img src="' + LABORATORIO.logo + '" alt="Laboratorio Óptico Luna" onerror="this.style.display=\'none\'"><div><div class="doc-title">Orden de trabajo</div><div><strong>' + esc(LABORATORIO.nombre) + '</strong></div><div class="addr">' + esc(LABORATORIO.direccion) + ' · Tel. ' + esc(LABORATORIO.telefonos) + '</div></div></div>';
+}
+function ordenEtiquetaHTML(d) {
+  var t = d, c = d.cliente || {};
+  var o = d.optometria;
+  var sinGrad = gradOrdenVacia(o);
+  var rx = sinGrad
+    ? '<div class="orden-sin-grad">⚠ Graduación no registrada — el cliente debe dar su receta vigente o hacerse el examen de la vista antes de la entrega</div>'
+    : '<table><tr><th></th><th>Esf</th><th>Cil</th><th>Eje</th></tr>' +
+      '<tr><td>O.D.</td><td>' + esc(fmtGrad(o.gradEsfOD)) + '</td><td>' + esc(fmtGrad(o.gradCilOD)) + '</td><td>' + esc(o.gradEjeOD || '—') + '</td></tr>' +
+      '<tr><td>O.I.</td><td>' + esc(fmtGrad(o.gradEsfOI)) + '</td><td>' + esc(fmtGrad(o.gradCilOI)) + '</td><td>' + esc(o.gradEjeOI || '—') + '</td></tr></table>' +
+      '<div>Add ' + esc(fmtGrad(o.gradAdd)) + ' · DNP ' + esc(o.dnp || '—') + '</div>';
+  return '<div class="orden-label"><div class="orden-label-wm" aria-hidden="true"></div><h4>' + esc(LABORATORIO.nombre) + ' · ' + esc(t.id || '') + '</h4>' +
+    '<div>' + esc(c.nombre || '') + ' · ' + fechaMX(t.fechaInicio) + (c.edad ? ' · ' + esc(String(c.edad)) + ' años' : '') + '</div>' +
+    '<div>Nº de tanda ' + esc(String(t.numero || '')) + ' · Entrega estimada ' + fechaMX(t.entregaEstimada) + '</div>' +
+    rx +
+    '<div>Diseño: ' + esc(t.lenteDiseno || '') + ' · Material: ' + esc(t.lenteMaterial || '') + '</div>' +
+    '<div>Tratamiento: ' + esc(t.lenteTratamiento || '') + '</div>' +
+    '<div>Armazón: ' + esc(t.armazonMaterial || '') + ' ' + esc(t.armazonDiseno || '') + ' · ' + esc(t.armazonModelo || '') + ' · ' + esc(t.armazonMarca || '') + '</div></div>';
+}
+function docOrdenHTML(d) {
+  return '<div class="doc doc-orden">' + docOrdenHeadHTML() +
+    '<p class="orden-hoja-info"><strong>Tanda ' + esc(d.id || '') + ' · Nº ' + esc(String(d.numero || '')) + '</strong> · 1 etiqueta · Entrega estimada ' + fechaMX(d.entregaEstimada) + '</p>' +
+    '<div class="doc-orden-grid">' + ordenEtiquetaHTML(d) + '</div></div>';
+}
+function abrirOrden(tandaId) {
+  api('getTanda', { id: tandaId }).then(function (d) {
+    state.currentTanda = d;
+    state.currentDoc = { kind: 'orden', tandaId: tandaId };
+    $('docArea').innerHTML = docOrdenHTML(d);
+    $('btnDocCompartir').hidden = false;
+    aplicarTamanoPagina('orden');
+    show('doc');
+  }).catch(function (e) { showError('No se pudo abrir la orden de trabajo: ' + e.message); });
+}
+function mensajeOrden(d) {
+  var nombre = (d.cliente && d.cliente.nombre) || '';
+  return 'Orden de trabajo — ' + LABORATORIO.nombre + ' · ' + (d.id || '') +
+    ' · Cliente ' + nombre + ' · Nº de tanda ' + (d.numero || '') +
+    ' · Entrega estimada ' + fechaMX(d.entregaEstimada) + '.';
 }
 function imprimirDoc() {
   if (!state.currentDoc) return;
@@ -1712,22 +1779,169 @@ function generarImagenTarjeta(doc, escala) {
     });
   });
 }
+/* ---------------- Imagen de la orden de trabajo (canvas, patrón tarjeta) ----------
+   Pintor 2 pasadas (medir + dibujar), mismo patrón que dibujarTarjeta:
+   el avance de `y` es idéntico en ambas pasadas para que el alto medido
+   sea el real. La marca de agua de Luna va detrás del contenido con
+   alfa bajo. Fondo blanco opaco primero (WhatsApp muestra negro el PNG
+   transparente). La fuente se fija antes de cada envolverTexto para que
+   la medición y el dibujo envuelvan igual. */
+function dibujarOrden(ctx, doc, logoLuna, escala, dibujar) {
+  var F = 'system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif';
+  var tinta = '#241f31';
+  var W = 528, M = 20, cw = W - 2 * M, LH = 17;
+  var k = escala || 1;
+  var y = M;
+  var t = doc, c = doc.cliente || {};
+  var o = doc.optometria;
+  var sinGrad = gradOrdenVacia(o);
+  // Marca de agua de Luna detrás del contenido.
+  if (dibujar && logoLuna) {
+    try {
+      var wmW = 300, wmH = Math.round(wmW * 527 / 785);
+      ctx.save();
+      ctx.globalAlpha = 0.12;
+      ctx.drawImage(logoLuna, (W - wmW) / 2, 90, wmW, wmH);
+      ctx.restore();
+    } catch (e) {}
+  }
+  // Encabezado: logo de Luna + título + laboratorio. La dirección se
+  // envuelve a 2 líneas si no cabe (en 528px no cabe en una sola).
+  var logoW = 92, logoH = Math.round(logoW * 527 / 785);
+  var dirX = M + logoW + 14, dirW = W - M - dirX;
+  ctx.font = fuenteDe(F, 11, false);
+  var dirLin = envolverTexto(ctx, LABORATORIO.direccion + ' · Tel. ' + LABORATORIO.telefonos, dirW);
+  var headH = 58 + dirLin.length * 14 + 8;
+  if (dibujar) {
+    if (logoLuna) { try { ctx.drawImage(logoLuna, M, y, logoW, logoH); } catch (e) {} }
+    texto(ctx, 'ORDEN DE TRABAJO', dirX, y + 22, fuenteDe(F, 18, true), '#6f55b8', 'left', true);
+    texto(ctx, LABORATORIO.nombre, dirX, y + 42, fuenteDe(F, 14, true), tinta, 'left', true);
+    dirLin.forEach(function (ln, i) {
+      texto(ctx, ln, dirX, y + 60 + i * 14, fuenteDe(F, 11, false), '#6b6478', 'left', true);
+    });
+    ctx.strokeStyle = '#9076DA';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(M, y + headH); ctx.lineTo(W - M, y + headH); ctx.stroke();
+  }
+  y += headH + 12;
+  // Folio + cliente.
+  var lineas = [
+    [LABORATORIO.nombre + ' · ' + (t.id || ''), true],
+    ['Cliente: ' + (c.nombre || '') + ' · ' + fechaMX(t.fechaInicio) + (c.edad ? ' · ' + c.edad + ' años' : ''), false],
+    ['Nº de tanda ' + (t.numero || '') + ' · Entrega estimada ' + fechaMX(t.entregaEstimada), false]
+  ];
+  lineas.forEach(function (ln) {
+    if (dibujar) texto(ctx, ln[0], M, y, fuenteDe(F, 14, ln[1]), tinta, 'left', true);
+    y += LH + 2;
+  });
+  y += 4;
+  // Graduación (tabla Esf/Cil/Eje) o aviso.
+  if (sinGrad) {
+    var aviso = 'Graduación no registrada — el cliente debe dar su receta vigente o hacerse el examen de la vista antes de la entrega.';
+    ctx.font = fuenteDe(F, 13, true);
+    var avLin = envolverTexto(ctx, aviso, cw - 20);
+    if (dibujar) {
+      ctx.fillStyle = '#fdecea';
+      trazoRedondeado(ctx, M, y, cw, avLin.length * 18 + 12, 8);
+      ctx.fill();
+    }
+    avLin.forEach(function (ln) {
+      if (dibujar) texto(ctx, ln, M + 10, y + 18, fuenteDe(F, 13, true), '#b3261e', 'left', true);
+      y += 18;
+    });
+    y += 12;
+  } else {
+    var xLab = M, xEsf = M + 60, xCil = M + 170, xEje = M + 280;
+    if (dibujar) {
+      ctx.fillStyle = '#efe9fb';
+      ctx.fillRect(M, y, cw, 26);
+      texto(ctx, 'Esf', xEsf, y + 18, fuenteDe(F, 13, true), '#6f55b8', 'left', true);
+      texto(ctx, 'Cil', xCil, y + 18, fuenteDe(F, 13, true), '#6f55b8', 'left', true);
+      texto(ctx, 'Eje', xEje, y + 18, fuenteDe(F, 13, true), '#6f55b8', 'left', true);
+    }
+    y += 26;
+    [['O.D.', o.gradEsfOD, o.gradCilOD, o.gradEjeOD], ['O.I.', o.gradEsfOI, o.gradCilOI, o.gradEjeOI]].forEach(function (fila, i) {
+      if (dibujar) {
+        if (i % 2 === 0) { ctx.fillStyle = '#f7f5fc'; ctx.fillRect(M, y, cw, LH + 8); }
+        ctx.strokeStyle = '#e3ddf2';
+        ctx.strokeRect(M + 0.5, y + 0.5, cw - 1, LH + 8);
+        texto(ctx, fila[0], xLab + 4, y + 17, fuenteDe(F, 13, true), tinta, 'left', true);
+        texto(ctx, fmtGrad(fila[1]), xEsf, y + 17, fuenteDe(F, 13, false), tinta, 'left', true);
+        texto(ctx, fmtGrad(fila[2]), xCil, y + 17, fuenteDe(F, 13, false), tinta, 'left', true);
+        texto(ctx, String(fila[3] || '—'), xEje, y + 17, fuenteDe(F, 13, false), tinta, 'left', true);
+      }
+      y += LH + 8;
+    });
+    if (dibujar) texto(ctx, 'Add ' + fmtGrad(o.gradAdd) + ' · DNP ' + (o.dnp || '—'), M, y + 16, fuenteDe(F, 13, false), tinta, 'left', true);
+    y += LH + 8;
+  }
+  y += 4;
+  // Lente y armazón.
+  var det = [
+    'Diseño: ' + (t.lenteDiseno || '—') + ' · Material: ' + (t.lenteMaterial || '—'),
+    'Tratamiento: ' + (t.lenteTratamiento || '—'),
+    'Armazón: ' + (t.armazonMaterial || '') + ' ' + (t.armazonDiseno || '') + ' · ' + (t.armazonModelo || '') + ' · ' + (t.armazonMarca || '')
+  ];
+  ctx.font = fuenteDe(F, 13, false);
+  det.forEach(function (ln) {
+    var partes = envolverTexto(ctx, ln, cw);
+    partes.forEach(function (p) {
+      if (dibujar) texto(ctx, p, M, y, fuenteDe(F, 13, false), tinta, 'left', true);
+      y += LH + 2;
+    });
+  });
+  y += 6;
+  if (dibujar) {
+    ctx.fillStyle = '#efe9fb';
+    trazoRedondeado(ctx, M, y, cw, 34, 8);
+    ctx.fill();
+    texto(ctx, LABORATORIO.nombre + ' · Precisión en nuestros procesos', M + 12, y + 22, fuenteDe(F, 12, true), '#6f55b8', 'left', true);
+  }
+  y += 34 + M;
+  return { ancho: Math.round(W * k), alto: Math.round(y * k) };
+}
+function generarImagenOrden(doc, escala) {
+  var k = escala || 2;
+  return cargarImagen('logo-luna.png').catch(function () { return null; }).then(function (logo) {
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas no disponible.');
+    var dims;
+    try { dims = dibujarOrden(ctx, doc, logo, k, false); } catch (e) { throw new Error('al medir la orden: ' + e.message); }
+    if (!dims || !dims.ancho || !dims.alto) throw new Error('No se pudo medir la orden.');
+    canvas.width = dims.ancho;
+    canvas.height = dims.alto;
+    ctx = canvas.getContext('2d');
+    ctx.scale(k, k);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, dims.ancho / k, dims.alto / k);
+    dibujarOrden(ctx, doc, logo, k, true);
+    return new Promise(function (resolve, reject) {
+      canvas.toBlob(function (blob) {
+        if (!blob) reject(new Error('No se pudo exportar el PNG.'));
+        else resolve(blob);
+      }, 'image/png');
+    });
+  });
+}
 function compartirDoc() {
-  if (!state.currentDoc || state.currentDoc.kind !== 'tarjeta') return;
+  if (!state.currentDoc || (state.currentDoc.kind !== 'tarjeta' && state.currentDoc.kind !== 'orden')) return;
   var d = state.currentTanda;
   if (!d) return;
+  var esOrden = state.currentDoc.kind === 'orden';
   var nombre = (d.cliente && d.cliente.nombre) || '';
-  var textoMsg = mensajeTarjeta(d);
-  var folio = String(d.tanda ? d.tanda.id : (d.id || 'tarjeta')).replace(/[^A-Za-z0-9]/g, '');
-  var nombreArchivo = 'tarjeta-' + folio + '.png';
+  var textoMsg = esOrden ? mensajeOrden(d) : mensajeTarjeta(d);
+  var folio = String(d.tanda ? d.tanda.id : (d.id || (esOrden ? 'orden' : 'tarjeta'))).replace(/[^A-Za-z0-9]/g, '');
+  var nombreArchivo = (esOrden ? 'orden-' : 'tarjeta-') + folio + '.png';
   var btn = $('btnDocCompartir');
   btn.disabled = true;
   btn.textContent = 'Generando imagen…';
-  var intento = generarImagenTarjeta(d, 2).catch(function () { return generarImagenTarjeta(d, 1); });
+  var generar = esOrden ? generarImagenOrden : generarImagenTarjeta;
+  var intento = generar(d, 2).catch(function () { return generar(d, 1); });
   intento.then(function (blob) {
     var archivo = new File([blob], nombreArchivo, { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
-      return navigator.share({ files: [archivo], title: 'Tanda Visual — Tarjeta ' + folio, text: textoMsg }).then(function () {
+      return navigator.share({ files: [archivo], title: 'Tanda Visual — ' + (esOrden ? 'Orden de trabajo ' : 'Tarjeta ') + folio, text: textoMsg }).then(function () {
         return 'compartido';
       }).catch(function (e) {
         if (e && e.name === 'AbortError') return 'cancelado';

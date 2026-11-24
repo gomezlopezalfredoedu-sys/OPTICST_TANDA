@@ -85,7 +85,7 @@
   </div>
   <div class="home-utils">
     <button class="btn btn-ghost" id="btnConfig" type="button">Configuración</button>
-    <span class="badge" id="homeVersion">Tanda Visual v2.0.0</span>
+    <span class="badge" id="homeVersion">Tanda Visual v2.0.2</span>
   </div>
 </section>
 
@@ -168,15 +168,17 @@
       </fieldset>
       <fieldset id="wLensometriaBox" hidden>
         <legend>Lensometría (de los lentes que usa)</legend>
-        <div class="rx-row"><span>O.D.</span>
-          <select id="wLensEsfOD" aria-label="Lensometría esfera O.D."></select>
-          <select id="wLensCilOD" aria-label="Lensometría cilindro O.D."></select>
-          <select id="wLensEjeOD" aria-label="Lensometría eje O.D."></select>
+        <h4>O.D.</h4>
+        <div class="rx-row">
+          <label class="rx-field"><span>Esf</span><select id="wLensEsfOD" aria-label="Lensometría esfera O.D."></select></label>
+          <label class="rx-field"><span>Cil</span><select id="wLensCilOD" aria-label="Lensometría cilindro O.D."></select></label>
+          <label class="rx-field"><span>Eje</span><select id="wLensEjeOD" aria-label="Lensometría eje O.D."></select></label>
         </div>
-        <div class="rx-row"><span>O.I.</span>
-          <select id="wLensEsfOI" aria-label="Lensometría esfera O.I."></select>
-          <select id="wLensCilOI" aria-label="Lensometría cilindro O.I."></select>
-          <select id="wLensEjeOI" aria-label="Lensometría eje O.I."></select>
+        <h4>O.I.</h4>
+        <div class="rx-row">
+          <label class="rx-field"><span>Esf</span><select id="wLensEsfOI" aria-label="Lensometría esfera O.I."></select></label>
+          <label class="rx-field"><span>Cil</span><select id="wLensCilOI" aria-label="Lensometría cilindro O.I."></select></label>
+          <label class="rx-field"><span>Eje</span><select id="wLensEjeOI" aria-label="Lensometría eje O.I."></select></label>
         </div>
         <div class="grid2">
           <label>Tratamientos <input id="wLensTratamientos" type="text" autocomplete="off"></label>
@@ -206,15 +208,17 @@
       </fieldset>
       <fieldset>
         <legend>Graduación (refracción subjetiva)</legend>
-        <div class="rx-row"><span>O.D.</span>
-          <select id="wGradEsfOD" aria-label="Graduación esfera O.D."></select>
-          <select id="wGradCilOD" aria-label="Graduación cilindro O.D."></select>
-          <select id="wGradEjeOD" aria-label="Graduación eje O.D."></select>
+        <h4>O.D.</h4>
+        <div class="rx-row">
+          <label class="rx-field"><span>Esf</span><select id="wGradEsfOD" aria-label="Graduación esfera O.D."></select></label>
+          <label class="rx-field"><span>Cil</span><select id="wGradCilOD" aria-label="Graduación cilindro O.D."></select></label>
+          <label class="rx-field"><span>Eje</span><select id="wGradEjeOD" aria-label="Graduación eje O.D."></select></label>
         </div>
-        <div class="rx-row"><span>O.I.</span>
-          <select id="wGradEsfOI" aria-label="Graduación esfera O.I."></select>
-          <select id="wGradCilOI" aria-label="Graduación cilindro O.I."></select>
-          <select id="wGradEjeOI" aria-label="Graduación eje O.I."></select>
+        <h4>O.I.</h4>
+        <div class="rx-row">
+          <label class="rx-field"><span>Esf</span><select id="wGradEsfOI" aria-label="Graduación esfera O.I."></select></label>
+          <label class="rx-field"><span>Cil</span><select id="wGradCilOI" aria-label="Graduación cilindro O.I."></select></label>
+          <label class="rx-field"><span>Eje</span><select id="wGradEjeOI" aria-label="Graduación eje O.I."></select></label>
         </div>
         <div class="grid2">
           <label>Add <select id="wGradAdd"></select></label>
@@ -234,9 +238,7 @@
       <p class="hint">El total es el precio de los lentes (armazón + lente) dividido entre 10 pagos semanales. Se elige el armazón y el lente con sus precios definidos del catálogo; la app muestra el total definido y tú tecleas el total final (precio de venta).</p>
       <fieldset>
         <legend>Armazón</legend>
-        <label>Modelo del catálogo
-          <select id="wArmazonCatalogo"><option value="">— Capturar a mano —</option></select>
-        </label>
+        <h4>Captura a mano</h4>
         <div class="grid2">
           <label>Modelo <input id="wArmazonModelo" type="text" autocomplete="off"></label>
           <label>Marca <input id="wArmazonMarca" type="text" autocomplete="off"></label>
@@ -259,7 +261,11 @@
           <label>Precio definido del lente ($)
             <input id="wLentePrecio" type="number" min="0" step="1" inputmode="decimal" placeholder="0">
           </label>
+          <label>Costo final de inversión ($) — costo real de la mica
+            <input id="wCostoInversion" type="number" min="0" step="1" inputmode="decimal" placeholder="0">
+          </label>
         </div>
+        <p class="hint">El precio definido del lente lo tecleas tú. Al elegir un concepto, su costo estimado (costo de la mica) se pone en Costo final de inversión, donde lo corriges al costo real.</p>
       </fieldset>
       <div class="grid2">
         <label>Total definido (armazón + lente) ($)
@@ -336,6 +342,7 @@
     <div class="grid2">
       <button class="btn btn-primary" id="btnFichaPago" type="button">Registrar pago</button>
       <button class="btn btn-primary" id="btnFichaTarjeta" type="button">Ver tarjeta</button>
+      <button class="btn btn-primary" id="btnFichaOrden" type="button">Orden de trabajo</button>
       <button class="btn btn-secondary" id="btnFichaReglamento" type="button">Ver reglamento</button>
       <button class="btn btn-secondary" id="btnFichaEntrega" type="button">Registrar entrega</button>
     </div>
@@ -428,13 +435,13 @@
 
 <nav class="bottom-nav">
   <div class="nav-group">
-    <button class="nav-item" data-view="home" type="button"><span class="nav-icon">⌂</span>Inicio</button>
-    <button class="nav-item" data-view="tandas" type="button"><span class="nav-icon">▦</span>Tandas</button>
+    <button class="nav-item nav-inicio" data-view="home" type="button"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>Inicio</button>
+    <button class="nav-item nav-tandas" data-view="tandas" type="button"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z"/></svg></span>Tandas</button>
   </div>
   <div class="nav-spacer"></div>
   <div class="nav-group">
-    <button class="nav-item" data-view="buscar" type="button"><span class="nav-icon">⌕</span>Buscar</button>
-    <button class="nav-item" data-view="resumen" type="button"><span class="nav-icon">≡</span>Resumen</button>
+    <button class="nav-item nav-buscar" data-view="buscar" type="button"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg></span>Buscar</button>
+    <button class="nav-item nav-resumen" data-view="resumen" type="button"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h2v2H4zm4 0h12v2H8zM4 11h2v2H4zm4 0h12v2H8zM4 16h2v2H4zm4 0h12v2H8z"/></svg></span>Resumen</button>
   </div>
   <button class="nav-fab" id="navFab" type="button" aria-label="Nueva tanda">
     <span class="nav-fab-circle">＋</span><span class="nav-fab-label">Nueva tanda</span>
