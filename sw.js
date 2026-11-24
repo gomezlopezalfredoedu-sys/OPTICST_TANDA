@@ -1,5 +1,5 @@
 /* OPTICST NEXUS · Tanda Visual — Service Worker: cachea el app shell para uso instalable/offline básico */
-const CACHE_NAME = 'tanda-visual-v1';
+const CACHE_NAME = 'tanda-visual-v2';
 const APP_SHELL = [
   'index.html',
   'styles.css',

@@ -1,7 +1,7 @@
 /* ==================================================================
    TANDA VISUAL — PWA (App 2, SEPARADA de la App 1)
    Boutique de Lentes Yael · Sucursal Calle 4 · Solo Calle 4 por ahora.
-   OPTICST NEXUS · Tanda Visual v1.0.0
+   OPTICST NEXUS · Tanda Visual v2.0.0
 
    Reglas (definición aprobada 2026-11-23):
    - Venta a plazos PERSONAL (no es tanda ni fondo común). 10 pagos
@@ -33,7 +33,7 @@
 'use strict';
 
 /* ---------------- Constantes ---------------- */
-var VERSION = '1.0.0';
+var VERSION = '2.0.0';
 var LS_URL = 'tv_api_url';
 var LS_TOKEN = 'tv_api_token';
 var LS_DEMO = 'tv_demo';
@@ -424,6 +424,10 @@ function show(vista) {
   document.querySelectorAll('.nav-item').forEach(function (b) {
     b.classList.toggle('active', b.dataset.view === vista);
   });
+  // v2.0.0: el FAB "Nueva tanda" también marca su estado activo cuando
+  // está abierto el wizard (antes solo lo hacían los .nav-item).
+  var fab = $('navFab');
+  if (fab) fab.classList.toggle('active', vista === 'wizard');
   window.scrollTo(0, 0);
 }
 
@@ -517,9 +521,23 @@ function cargarPanel() {
   }).catch(function (e) { showError('No se pudo cargar el panel: ' + e.message); });
 }
 function renderPanel(d) {
+  // v2.0.0: tira de resumen con los 3 conteos del día (Yael: turquesa /
+  // rojo / lila según el estado). El payload de getPanel (backend y DEMO)
+  // no trae `pagados` por cliente, así que cada tarjeta muestra el chip
+  // de color bien visible + semana/monto, sin inventar progreso.
+  var nHoy = (d.paganHoy || []).length;
+  var nAtr = (d.atrasados || []).length;
+  var nRec = (d.recibenEstaSemana || []).length;
+  var elResumen = $('panelResumen');
+  if (elResumen) {
+    elResumen.innerHTML =
+      '<div class="panel-resumen-item panel-resumen-hoy"><span class="pr-num">' + nHoy + '</span><span class="pr-label">Pagan hoy</span></div>' +
+      '<div class="panel-resumen-item panel-resumen-atraso"><span class="pr-num">' + nAtr + '</span><span class="pr-label">Atrasados</span></div>' +
+      '<div class="panel-resumen-item panel-resumen-reciben"><span class="pr-num">' + nRec + '</span><span class="pr-label">Reciben esta semana</span></div>';
+  }
   var htmlHoy = '';
   (d.paganHoy || []).forEach(function (p) {
-    htmlHoy += '<div class="list-item"><div class="row"><strong>' + esc(p.clienteNombre) + '</strong>' + colorChip(p.color) + '</div>' +
+    htmlHoy += '<div class="list-item panel-item panel-item-' + String(p.color || 'Verde').toLowerCase() + '"><div class="row"><strong>' + esc(p.clienteNombre) + '</strong>' + colorChip(p.color) + '</div>' +
       '<small>Semana ' + p.semana + ' · ' + money(p.monto) + ' · Nº ' + p.numero + ' · TAN ' + esc(p.tandaId) + '</small>' +
       '<div class="row"><button class="btn btn-secondary" data-accion="pago" data-tanda="' + esc(p.tandaId) + '" data-semana="' + p.semana + '">Registrar pago</button>' +
       '<a class="btn btn-ghost" href="' + waLink(p.telefono, mensajeRecordatorio(p)) + '" target="_blank" rel="noopener">Recordatorio</a></div></div>';
@@ -527,7 +545,7 @@ function renderPanel(d) {
   $('panelPaganHoy').innerHTML = htmlHoy || '<p class="hint">Nadie paga hoy.</p>';
   var htmlAtr = '';
   (d.atrasados || []).forEach(function (a) {
-    htmlAtr += '<div class="list-item"><div class="row"><strong>' + esc(a.clienteNombre) + '</strong>' + colorChip(a.color) + '</div>' +
+    htmlAtr += '<div class="list-item panel-item panel-item-' + String(a.color || 'Verde').toLowerCase() + '"><div class="row"><strong>' + esc(a.clienteNombre) + '</strong>' + colorChip(a.color) + '</div>' +
       '<small>' + a.semanasVencidas + ' semana(s) vencida(s) · adeuda ' + money(a.adeudo) + ' · Nº ' + a.numero + ' · entrega ' + fechaMX(a.entregaEstimada) + ' (recorrida)</small>' +
       '<div class="row"><button class="btn btn-secondary" data-accion="ficha" data-tanda="' + esc(a.tandaId) + '">Ver tanda</button>' +
       '<a class="btn btn-ghost" href="' + waLink(a.telefono, mensajeAtraso(a)) + '" target="_blank" rel="noopener">Mensaje de atraso</a></div></div>';
@@ -535,7 +553,7 @@ function renderPanel(d) {
   $('panelAtrasados').innerHTML = htmlAtr || '<p class="hint">Nadie atrasado. Bien.</p>';
   var htmlRec = '';
   (d.recibenEstaSemana || []).forEach(function (r) {
-    htmlRec += '<div class="list-item"><div class="row"><strong>' + esc(r.clienteNombre) + '</strong>' + colorChip(r.color) + '</div>' +
+    htmlRec += '<div class="list-item panel-item panel-item-' + String(r.color || 'Verde').toLowerCase() + '"><div class="row"><strong>' + esc(r.clienteNombre) + '</strong>' + colorChip(r.color) + '</div>' +
       '<small>Nº ' + r.numero + ' · entrega ' + fechaMX(r.entregaEstimada) + ' · de 3:00 a 9:00 pm</small>' +
       '<div class="row"><button class="btn btn-secondary" data-accion="ficha" data-tanda="' + esc(r.tandaId) + '">Ver tanda</button>' +
       (d.esViernes ? '<a class="btn btn-ghost" href="' + waLink(r.telefono, mensajeRecoger(r)) + '" target="_blank" rel="noopener">Ya puede recoger</a>' : '') + '</div></div>';
@@ -1467,13 +1485,17 @@ function estadoSemanaTxt(s) {
 function docTarjetaHTML(d) {
   var c = d.cliente, t = d.tanda || d;
   var semanas = d.semanas || [];
+  var colorT = t.color || d.color || 'Verde';
+  // v2.0.0: banner Yael (degradado Turquesa→Lila) con el chip de color
+  // bien visible, y el progreso destacado en su propio bloque.
   var html = '<div class="doc doc-tarjeta">' + docHead('Tarjeta de registro de pagos') +
+    '<div class="tarjeta-banner"><span class="doc-title">Tarjeta de pagos</span>' + colorChip(colorT) + '</div>' +
     '<p><strong>Nombre:</strong> ' + esc(c.nombre) + ' · <strong>Nº de cliente:</strong> ' + esc(c.id) +
     ' · <strong>Nº de tanda:</strong> ' + esc(t.numero) + '</p>' +
     '<p><strong>Inicio:</strong> ' + fechaMX(t.fechaInicio) + ' · <strong>Entrega estimada:</strong> ' + fechaMX(t.entregaEstimada) +
     (t.fechaEntrega ? ' · <strong>Entregada:</strong> ' + fechaMX(t.fechaEntrega) : '') + '</p>' +
-    '<p><strong>Progreso:</strong> ' + (d.pagados || 0) + ' de 10 pagos ' + colorChip(t.color || d.color || 'Verde') + '</p>' +
-    progresoBar(d.pagados || 0) +
+    '<div class="tarjeta-progreso"><p><strong>Progreso:</strong> ' + (d.pagados || 0) + ' de 10 pagos ' + colorChip(colorT) + '</p>' +
+    progresoBar(d.pagados || 0) + '</div>' +
     '<table><tr><th>Semana</th><th>Fecha límite</th><th>Monto</th><th>Estado</th><th>Fecha de pago</th><th>Comprobante</th></tr>';
   semanas.forEach(function (s) {
     html += '<tr><td>' + s.semana + '</td><td>' + fechaMX(s.fechaLimite) + '</td><td>' + money(s.monto) + '</td>' +
@@ -1591,13 +1613,43 @@ function dibujarTarjeta(ctx, doc, logo, escala, dibujar) {
     ['Nombre: ' + (c.nombre || ''), true],
     ['Nº de cliente: ' + (c.id || '') + '   ·   Nº de tanda: ' + (t.numero || ''), false],
     ['Inicio: ' + fechaMX(t.fechaInicio) + '   ·   Entrega estimada: ' + fechaMX(t.entregaEstimada), false],
-    ['Progreso: ' + (doc.pagados || 0) + ' de 10 pagos   ·   Color: ' + (t.color || doc.color || 'Verde'), false],
+    ['Progreso: ' + (doc.pagados || 0) + ' de 10 pagos', false],
     ['Total: ' + money(t.total) + '  ·  9 pagos de ' + money(t.pagoSemanal) + ' + último de ' + money(t.ultimoPago), false]
   ];
   lineas.forEach(function (ln) {
     if (dibujar) texto(ctx, ln[0], M, y, fuenteDe(F, 14, ln[1]), tinta, 'left', true);
     y += LH + 2;
   });
+  // v2.0.0: insignia de color + barra de progreso de 10 segmentos (Yael).
+  // El avance de `y` es idéntico en la pasada de medición y en la de
+  // dibujo, para que el alto medido sea el real.
+  var colorNombre = t.color || doc.color || 'Verde';
+  var colorHex = { Verde: '#1e7d4f', Amarillo: '#8d6e00', Naranja: '#8d4e00', Rojo: '#b3261e' }[colorNombre] || '#1e7d4f';
+  var colorDesc = (COLORES[colorNombre] || {}).desc || '';
+  var pillTxt = colorNombre + (colorDesc ? ' — ' + colorDesc : '');
+  ctx.font = fuenteDe(F, 13, true);
+  var pillW = ctx.measureText(pillTxt).width + 28;
+  if (dibujar) {
+    ctx.fillStyle = colorHex;
+    trazoRedondeado(ctx, M, y, pillW, 24, 12);
+    ctx.fill();
+    texto(ctx, pillTxt, M + 14, y + 17, fuenteDe(F, 13, true), '#fff', 'left', true);
+  }
+  y += 24 + 8;
+  var pag = num(doc.pagados, 0);
+  if (dibujar) {
+    var segW = (cw - 9 * 3) / 10, segH = 10;
+    var gBar = ctx.createLinearGradient(M, y, W - M, y);
+    gBar.addColorStop(0, '#40C5D2');
+    gBar.addColorStop(1, '#9076DA');
+    for (var i = 0; i < 10; i++) {
+      ctx.fillStyle = i < pag ? gBar : '#e9e3f7';
+      trazoRedondeado(ctx, M + i * (segW + 3), y, segW, segH, 5);
+      ctx.fill();
+    }
+    texto(ctx, pag + ' de 10 pagos', M, y + segH + 14, fuenteDe(F, 12, false), '#6b6478', 'left', true);
+  }
+  y += 10 + 18 + 6;
   y += 6;
   // Tabla de semanas.
   var xSem = M, xLim = M + 62, xMon = M + 190, xEst = M + 300, xPag = M + 400;

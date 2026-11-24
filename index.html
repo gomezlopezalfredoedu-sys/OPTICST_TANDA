@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>OPTICST NEXUS · Tanda Visual — Boutique de Lentes Yael</title>
 <meta name="description" content="Tanda Visual — Venta a plazos de Boutique de Lentes Yael, Sucursal Calle 4.">
-<meta name="theme-color" content="#0A0F2E">
+<meta name="theme-color" content="#9076DA">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -14,13 +14,23 @@
 <body>
 <div id="splashStart" hidden>
   <div class="splash-card"><img src="logo-tanda-visual.png" alt="Tanda Visual"></div>
+  <div class="splash-negocio">Boutique de Lentes Yael</div>
+  <div class="splash-dev">By Caremi Sistems Technology</div>
 </div>
+
+<header class="app-header">
+  <img src="logo-yael-contorno-blanco.png" alt="Boutique de Lentes Yael" class="app-header-logo">
+  <div class="app-header-text">
+    <span class="app-header-nombre">Boutique de Lentes Yael</span>
+    <span class="app-header-tag">Tanda Visual</span>
+  </div>
+</header>
 
 <main>
 <!-- ============ SETUP ============ -->
 <section class="view" id="view-setup" hidden>
   <div class="card setup-card">
-    <div class="setup-logo"><img src="logo-nexus.png" alt="OPTICST NEXUS" style="max-width:180px"></div>
+    <div class="setup-logo"><img src="logo.png" alt="Boutique de Lentes Yael" style="max-width:240px"></div>
     <h2>Conectar Tanda Visual</h2>
     <p class="subtitle">Pega la URL del web app y el token de la App 2 (Tanda Visual). Son distintos a los de la App 1.</p>
     <label>URL del web app (Apps Script)
@@ -56,6 +66,10 @@
       <span class="dash-sub">Efectivo o transferencia</span>
     </button>
   </div>
+  <div class="card panel-resumen-card">
+    <h3>Resumen del día</h3>
+    <div class="panel-resumen" id="panelResumen"></div>
+  </div>
   <div class="card">
     <h3>Pagan hoy</h3>
     <div id="panelPaganHoy" class="list"></div>
@@ -71,7 +85,7 @@
   </div>
   <div class="home-utils">
     <button class="btn btn-ghost" id="btnConfig" type="button">Configuración</button>
-    <span class="badge" id="homeVersion">Tanda Visual v1.0.0</span>
+    <span class="badge" id="homeVersion">Tanda Visual v2.0.0</span>
   </div>
 </section>
 

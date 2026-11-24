@@ -1,12 +1,8 @@
-/* OPTICST NEXUS · TANDA VISUAL — plataforma; acentos morados #9076DA heredados de la app de Yael
-   Marca Nexus: Cian Tech #00E5FF · Azul Eléctrico #2E7BFF · Violeta Pro #A020FF
-   Azul Noche #0A0F1F · Blanco #FFFFFF. Yael: Turquesa #40C5D2 · Lila #9076DA.
-   Tipografía principal del manual: Orbitron (bundled local en fonts/,
-   la app sigue funcionando offline).
-   Base: styles.css de la App 1 (mismo lenguaje visual). Las clases de
-   documentos de la App 1 (.doc-comprobante, .doc-ticket, .doc-orden)
-   no se usan aquí; los documentos de Tanda Visual son .doc-tarjeta y
-   .doc-reglamento (al final del archivo). */
+/* TANDA VISUAL v2.0.0 — Boutique de Lentes Yael protagoniza.
+   Paleta Yael (manual de marca): Turquesa #40C5D2 · Lila #9076DA ·
+   Negro #000000 · Blanco #FFFFFF. El logo de Tanda Visual (lentes +
+   calendario + $) es solo la marca de la app: splash e icono.
+   Desarrollador: Caremi Sistems Technology. */
 /* Orbitron variable (400-900), solo latin, para el nombre de la app en el splash. */
 @font-face{font-family:'Orbitron';font-style:normal;font-weight:400 900;font-display:swap;src:url(fonts/orbitron-latin.woff2) format('woff2')}
 :root{
@@ -15,10 +11,11 @@
   --turquoise:#40C5D2; --night:#0A0F1F;
   --ink:#241f31; --muted:#6b6478; --line:#e3ddf2; --bg:#f7f5fc;
   --card:#ffffff; --ok:#1e7d4f; --err:#b3261e; --radius:14px;
-  --grad-brand:linear-gradient(135deg,#A020FF 0%,#2E7BFF 60%,#0097c2 100%);
-  --grad-hero:linear-gradient(140deg,#A020FF 0%,#2E7BFF 55%,#0097c2 100%);
+  --grad-brand:linear-gradient(135deg,#40C5D2 0%,#9076DA 100%);
+  --grad-hero:linear-gradient(140deg,#40C5D2 0%,#9076DA 100%);
   --grad-soft:linear-gradient(150deg,#9076DA 0%,#6f55b8 100%);
-  --grad-blue:linear-gradient(150deg,#2E7BFF 0%,#40C5D2 100%);
+  --grad-turq:linear-gradient(150deg,#40C5D2 0%,#2b9aa8 100%);
+  --grad-blue:linear-gradient(150deg,#40C5D2 0%,#9076DA 100%);
   --grad-yael:linear-gradient(135deg,#40C5D2 0%,#9076DA 100%); /* Fase 3: Turquesa (azul petróleo) a Lila (violeta), manual de marca Yael */
   --nav-h:64px;
 }
@@ -29,6 +26,15 @@ h2{font-size:1.35rem;margin:.4rem 0 .8rem}
 h3{margin:.2rem 0 .6rem}
 h4{margin:.4rem 0 .3rem}
 p{margin:.4rem 0}
+/* ---------- Encabezado de la app (v2.0.0) ----------
+   Fijo arriba, degradado Yael Turquesa→Lila con el logo de Yael
+   (versión contorno blanco, legible sobre degradado). Yael
+   protagoniza; "Tanda Visual" es solo la etiqueta de la app. */
+.app-header{position:sticky;top:0;z-index:45;display:flex;align-items:center;gap:.6rem;background:var(--grad-yael);color:#fff;padding:.5rem .8rem;box-shadow:0 2px 12px rgba(64,197,210,.35)}
+.app-header-logo{height:34px;width:auto;flex:none}
+.app-header-text{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.app-header-nombre{font-weight:800;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-header-tag{align-self:flex-start;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.45);border-radius:999px;padding:.1rem .55rem;margin-top:.15rem}
 .splash{background:#000;border-radius:var(--radius);padding:1.2rem 1rem .9rem;text-align:center;margin-bottom:1rem}
 .splash-logo{max-width:260px;width:100%;height:auto}
 .splash-name{font-family:'Orbitron',sans-serif;color:#fff;font-weight:800;letter-spacing:.35em;margin-top:.4rem}
@@ -36,15 +42,18 @@ p{margin:.4rem 0}
 .setup-logo{max-width:280px;width:100%;height:auto;margin-bottom:.5rem}
 .center{text-align:center}
 /* ---------- Splash de arranque ----------
-   Pantalla completa azul noche (#0A0F2E) con el logo propio de Tanda
-   Visual (logo-tanda-visual.png: lentes + calendario + $, texto
-   "Tanda Visual" y "por CAREMI SISTEMS TECHNOLOGY") en una tarjeta
-   blanca. Solo al abrir la app ya configurada; se puede saltar con
+   Pantalla completa con el degradado Yael (Turquesa→Lila) y el logo
+   propio de Tanda Visual (logo-tanda-visual.png: lentes + calendario
+   + $, texto "Tanda Visual" y "por CAREMI SISTEMS TECHNOLOGY") en
+   una tarjeta blanca. Debajo, el negocio (Yael) y el desarrollador
+   (Caremi). Solo al abrir la app ya configurada; se puede saltar con
    un toque. */
-#splashStart{position:fixed;inset:0;z-index:100;background:#0A0F2E;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;cursor:pointer;padding:1rem}
+#splashStart{position:fixed;inset:0;z-index:100;background:var(--grad-yael);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;cursor:pointer;padding:1rem}
 #splashStart[hidden]{display:none}
 .splash-card{background:#fff;border-radius:18px;padding:14px 16px;width:min(360px,84vw);box-shadow:0 8px 32px rgba(0,0,0,.45)}
 .splash-card img{width:100%;height:auto;display:block}
+.splash-negocio{color:#fff;font-weight:800;font-size:1.15rem;letter-spacing:.02em;text-shadow:0 1px 6px rgba(0,0,0,.25)}
+.splash-dev{color:rgba(255,255,255,.85);font-size:.82rem;font-weight:600;letter-spacing:.04em}
 /* Fila de utilidades del panel principal (v2.1 punto 8): aquí viven
    Configuración y el aviso DEMO tras quitar el encabezado superior. */
 .home-utils{display:flex;gap:.6rem;align-items:center;justify-content:flex-end;margin-top:.9rem}
@@ -54,13 +63,22 @@ main{max-width:920px;margin:0 auto;padding:1rem 1rem 2rem}
    aparece con un suave deslizamiento; al tocar un botón, tarjeta o
    ícono del menú, se encoge un poco (como si se hundiera). Todo en
    CSS, sin librerías. Se respetan los ajustes de movimiento reducido
-   del teléfono. */
-@keyframes vistaEntra{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.view:not([hidden]){animation:vistaEntra .28s ease}
+   del teléfono.
+   v2.0.0: entrada de vista más fluida (.35s, cubic-bezier suave) y
+   entrada escalonada de las tarjetas dentro de la vista. */
+@keyframes vistaEntra{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.view:not([hidden]){animation:vistaEntra .35s cubic-bezier(.22,.61,.36,1)}
+@keyframes cardEntra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.view:not([hidden])>.card,.view:not([hidden])>.dashboard-grid{animation:cardEntra .35s cubic-bezier(.22,.61,.36,1) both}
+.view:not([hidden])>*:nth-child(3){animation-delay:.05s}
+.view:not([hidden])>*:nth-child(4){animation-delay:.1s}
+.view:not([hidden])>*:nth-child(5){animation-delay:.15s}
+.view:not([hidden])>*:nth-child(6){animation-delay:.2s}
+.view:not([hidden])>*:nth-child(7){animation-delay:.25s}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 /* Encabezados de sección consistentes: título + barra degradada de marca */
 .view>h2{font-size:1.5rem;margin:.2rem 0 .4rem}
-.view>h2::after{content:'';display:block;width:56px;height:4px;border-radius:4px;background:linear-gradient(90deg,#00E5FF,#2E7BFF,#A020FF);margin-top:.35rem}
+.view>h2::after{content:'';display:block;width:56px;height:4px;border-radius:4px;background:linear-gradient(90deg,#40C5D2,#9076DA);margin-top:.35rem}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:1rem;margin-bottom:1rem;box-shadow:0 2px 10px rgba(36,31,49,.08)}
 label{display:block;font-weight:600;font-size:.92rem;margin:.55rem 0}
 label input,label select{font-weight:400}
@@ -70,9 +88,9 @@ input[readonly]{background:var(--purple-light)}
 /* ---------- Botones grandes tipo 3D (degradado + relieve + sombra) ---------- */
 .btn{border:0;border-radius:12px;padding:.7rem 1.15rem;min-height:48px;font-size:.98rem;font-weight:700;cursor:pointer;box-shadow:0 3px 0 rgba(36,31,49,.18);transition:transform .06s ease,box-shadow .06s ease,filter .15s ease}
 .btn:active{transform:translateY(3px) scale(.97);box-shadow:0 1px 0 rgba(36,31,49,.18);filter:brightness(.96)}
-.btn-primary{background:var(--grad-brand);color:#fff;box-shadow:0 4px 0 #3d1a7a,0 8px 16px rgba(46,123,255,.35),inset 0 1px 0 rgba(255,255,255,.45)}
+.btn-primary{background:var(--grad-brand);color:#fff;box-shadow:0 4px 0 #5b4a8a,0 8px 16px rgba(144,118,218,.35),inset 0 1px 0 rgba(255,255,255,.45)}
 .btn-primary:hover{filter:brightness(1.07)}
-.btn-primary:active{box-shadow:0 1px 0 #3d1a7a,0 3px 8px rgba(46,123,255,.3),inset 0 1px 0 rgba(255,255,255,.45)}
+.btn-primary:active{box-shadow:0 1px 0 #5b4a8a,0 3px 8px rgba(144,118,218,.3),inset 0 1px 0 rgba(255,255,255,.45)}
 .btn-secondary{background:#fff;color:var(--purple-dark);border:1.5px solid var(--purple);box-shadow:0 3px 0 #d9cdf5}
 .btn-secondary:hover{background:var(--purple-light)}
 .btn-secondary:active{box-shadow:0 1px 0 #d9cdf5}
@@ -93,7 +111,7 @@ main .btn-ghost:active{box-shadow:0 1px 0 #d9cdf5}
 
 /* ---------- Dashboard: 3 acciones grandes + accesos secundarios ---------- */
 .dashboard-grid{display:grid;grid-template-columns:1fr;gap:.9rem;margin-bottom:1.1rem}
-.dash-card{border:0;border-radius:18px;padding:1.1rem 1rem;text-align:left;cursor:pointer;font-family:inherit;color:#fff;box-shadow:0 5px 0 rgba(10,15,31,.28),0 12px 22px rgba(46,123,255,.3),inset 0 1px 0 rgba(255,255,255,.45);transition:transform .06s ease,box-shadow .06s ease,filter .15s ease}
+.dash-card{border:0;border-radius:18px;padding:1.1rem 1rem;text-align:left;cursor:pointer;font-family:inherit;color:#fff;box-shadow:0 5px 0 rgba(10,15,31,.28),0 12px 22px rgba(144,118,218,.3),inset 0 1px 0 rgba(255,255,255,.45);transition:transform .06s ease,box-shadow .06s ease,filter .15s ease}
 .dash-card:active{transform:scale(.97);filter:brightness(1.05)}
 .dash-card:hover{filter:brightness(1.06)}
 .dash-card:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(10,15,31,.28),0 4px 10px rgba(46,123,255,.3),inset 0 1px 0 rgba(255,255,255,.45)}
@@ -103,8 +121,8 @@ main .btn-ghost:active{box-shadow:0 1px 0 #d9cdf5}
 .dash-hero-big{background:var(--grad-hero);min-height:132px}
 .dash-hero-big .dash-icon{font-size:2.6rem}
 .dash-hero-big strong{font-size:1.5rem}
-.dash-hero-buscar{background:var(--grad-soft)}
-.dash-hero-abono{background:var(--grad-blue)}
+.dash-hero-buscar{background:var(--grad-soft)} /* Lila Yael */
+.dash-hero-abono{background:var(--grad-turq)} /* Turquesa Yael */
 @media (min-width:700px){
   .dashboard-hero{grid-template-columns:1.35fr 1fr}
   .dash-hero-big{grid-row:span 2;min-height:100%;display:flex;flex-direction:column;justify-content:center}
@@ -133,19 +151,19 @@ main .btn-ghost:active{box-shadow:0 1px 0 #d9cdf5}
 .nav-item{background:none;border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:1;min-width:0;font-size:.64rem;font-weight:700;color:var(--muted);padding:.3rem 0 .15rem;cursor:pointer;font-family:inherit;transition:transform .12s ease}
 .nav-item:active{transform:scale(.85)}
 .nav-item .nav-icon{font-size:1.35rem;line-height:1}
-.nav-item.active{color:var(--violet-pro)}
-.nav-item.active::after{content:'';width:22px;height:3px;border-radius:3px;background:linear-gradient(90deg,#00E5FF,#2E7BFF,#A020FF)}
+.nav-item.active{color:var(--purple)}
+.nav-item.active::after{content:'';width:22px;height:3px;border-radius:3px;background:linear-gradient(90deg,#40C5D2,#9076DA)}
 .nav-fab{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;font-family:inherit;padding:0}
-.nav-fab-circle{width:60px;height:60px;border-radius:50%;background:var(--grad-brand);color:#fff;font-size:2rem;line-height:52px;text-align:center;border:4px solid #fff;box-shadow:0 6px 16px rgba(46,123,255,.5),0 3px 0 rgba(10,15,31,.22),inset 0 1px 0 rgba(255,255,255,.45);transition:transform .12s ease}
+.nav-fab-circle{width:60px;height:60px;border-radius:50%;background:var(--grad-brand);color:#fff;font-size:2rem;line-height:52px;text-align:center;border:4px solid #fff;box-shadow:0 6px 16px rgba(144,118,218,.5),0 3px 0 rgba(10,15,31,.22),inset 0 1px 0 rgba(255,255,255,.45);transition:transform .12s ease}
 .nav-fab-circle:active{transform:scale(.88) rotate(90deg)}
 .nav-fab:active .nav-fab-circle{transform:translateY(2px)}
 .nav-fab-label{font-size:.64rem;font-weight:700;color:var(--muted)}
-.nav-fab.active .nav-fab-label{color:var(--violet-pro)}
-.nav-fab.active .nav-fab-circle{box-shadow:0 0 0 3px #00E5FF,0 6px 16px rgba(46,123,255,.5),0 3px 0 rgba(10,15,31,.22),inset 0 1px 0 rgba(255,255,255,.45)}
+.nav-fab.active .nav-fab-label{color:var(--purple)}
+.nav-fab.active .nav-fab-circle{box-shadow:0 0 0 3px #40C5D2,0 6px 16px rgba(144,118,218,.5),0 3px 0 rgba(10,15,31,.22),inset 0 1px 0 rgba(255,255,255,.45)}
 
 .steps{list-style:none;display:flex;gap:.3rem;padding:0;flex-wrap:wrap;margin:.5rem 0 1rem}
 .steps li{flex:1;min-width:90px;text-align:center;font-size:.82rem;font-weight:600;padding:.45rem .2rem;border-radius:999px;background:#e9e3f7;color:var(--muted)}
-.steps li.active{background:linear-gradient(135deg,#A020FF,#2E7BFF);color:#fff;box-shadow:0 3px 8px rgba(46,123,255,.35)}
+.steps li.active{background:linear-gradient(135deg,#40C5D2,#9076DA);color:#fff;box-shadow:0 3px 8px rgba(144,118,218,.35)}
 .steps li.done{background:#d9f0e3;color:var(--ok)}
 .wizard-nav{justify-content:space-between;margin-top:.5rem}
 .wizard-nav .btn{flex:1;max-width:220px}
@@ -162,7 +180,8 @@ legend{font-weight:700;color:var(--purple-dark);padding:0 .4rem}
 .av-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem .9rem}
 @media (max-width:600px){.av-grid{grid-template-columns:1fr}}
 .list{display:grid;gap:.6rem;margin-top:.7rem}
-.list-item{background:#fff;border:1px solid var(--line);border-radius:12px;padding:.7rem .9rem;box-shadow:0 1px 6px rgba(36,31,49,.06)}
+.list-item{background:#fff;border:1px solid var(--line);border-radius:12px;padding:.7rem .9rem;box-shadow:0 1px 6px rgba(36,31,49,.06);transition:transform .08s ease,box-shadow .08s ease}
+.list-item:active{transform:scale(.97) translateY(1px);box-shadow:0 1px 3px rgba(36,31,49,.08)}
 .list-item .row{justify-content:space-between}
 .list-item strong{color:var(--purple-dark)}
 .list-item small{color:var(--muted);display:block}
@@ -279,7 +298,7 @@ code{background:var(--purple-light);padding:.1rem .3rem;border-radius:5px}
 .switch input{position:absolute;opacity:0;width:0;height:0;min-height:0;padding:0;border:0;margin:0}
 .switch .slider{position:absolute;inset:0;background:#cfc6e6;border-radius:999px;transition:background .2s}
 .switch .slider::before{content:'';position:absolute;width:24px;height:24px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.3);transition:transform .2s}
-.switch input:checked + .slider{background:linear-gradient(135deg,#A020FF,#2E7BFF)}
+.switch input:checked + .slider{background:linear-gradient(135deg,#40C5D2,#9076DA)}
 .switch input:checked + .slider::before{transform:translateX(24px)}
 .switch input:focus-visible + .slider{outline:2px solid var(--purple);outline-offset:2px}
 
@@ -351,7 +370,7 @@ html,body,.doc,.doc-comprobante .banner-top,.doc-watermark,.orden-label-wm,.doc-
      el contenido cupiera. Con padding-bottom:0 el PDF sale en 1 hoja
      (verificado en Chromium real: 1 página, contenido completo). */
   body{background:#fff;padding-bottom:0}
-  .app-footer,.doc-toolbar,.wizard-nav,.btn,.bottom-nav{display:none!important}
+  .app-header,.app-footer,.doc-toolbar,.wizard-nav,.btn,.bottom-nav,#splashStart{display:none!important}
   main{max-width:none;padding:0}
   .view{display:none!important}
   #view-doc{display:block!important}
@@ -393,6 +412,25 @@ html,body,.doc,.doc-comprobante .banner-top,.doc-watermark,.orden-label-wm,.doc-
 }
 
 /* ---------- Tanda Visual: componentes propios ---------- */
+/* ---------- Panel del día v2.0.0: tira de resumen + tarjetas por estado ---------- */
+.panel-resumen{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}
+@media (max-width:600px){.panel-resumen{grid-template-columns:1fr 1fr 1fr;gap:.45rem}}
+.panel-resumen-item{background:#f7f5fc;border:1px solid var(--line);border-left:5px solid var(--purple);border-radius:12px;padding:.6rem .7rem;text-align:center}
+.panel-resumen-item .pr-num{display:block;font-size:1.5rem;font-weight:800;color:var(--ink);line-height:1.1}
+.panel-resumen-item .pr-label{display:block;font-size:.78rem;font-weight:700;color:var(--muted)}
+.panel-resumen-hoy{border-left-color:#40C5D2}
+.panel-resumen-hoy .pr-num{color:#2b9aa8}
+.panel-resumen-atraso{border-left-color:#b3261e}
+.panel-resumen-atraso .pr-num{color:#b3261e}
+.panel-resumen-reciben{border-left-color:#9076DA}
+.panel-resumen-reciben .pr-num{color:#6f55b8}
+/* Tarjeta de cliente del panel: borde izquierdo según su color de riesgo. */
+.panel-item{border-left:5px solid var(--purple)}
+.panel-item-verde{border-left-color:#1e7d4f}
+.panel-item-amarillo{border-left-color:#8d6e00}
+.panel-item-naranja{border-left-color:#8d4e00}
+.panel-item-rojo{border-left-color:#b3261e}
+.panel-item .chip{font-size:.85rem;padding:.2rem .7rem}
 /* Fotos (INE frente, rostro, comprobantes): vista previa en el formulario. */
 .foto-preview img{max-width:100%;max-height:220px;border-radius:10px;border:1px solid var(--line);margin-top:.4rem}
 /* Firma digital: lienzo blanco con borde; se firma con el dedo o el mouse. */
@@ -408,7 +446,7 @@ html,body,.doc,.doc-comprobante .banner-top,.doc-watermark,.orden-label-wm,.doc-
 .prog{margin:.5rem 0}
 .prog-segs{display:flex;gap:3px;margin-bottom:.25rem}
 .prog-seg{flex:1;height:10px;border-radius:5px;background:#e9e3f7}
-.prog-seg.lleno{background:linear-gradient(90deg,#2E7BFF,#A020FF)}
+.prog-seg.lleno{background:linear-gradient(90deg,#40C5D2,#9076DA)}
 /* Chips de color (el color es el filtro de riesgo; visible en la tarjeta). */
 .chip-estado-amarillo{background:#fff8e1;color:#8d6e00;border-color:#ffe082}
 .chip-estado-rojo{background:#fdecea;color:#b3261e;border-color:#f5c6c2}
@@ -421,6 +459,12 @@ html,body,.doc,.doc-comprobante .banner-top,.doc-watermark,.orden-label-wm,.doc-
 .doc-contacto{font-size:.88rem;color:var(--muted);text-align:center;margin-top:1rem}
 .doc-tarjeta{max-width:8.5in;margin:0 auto}
 .doc-tarjeta .prog{max-width:420px}
+/* Banner Yael de la tarjeta (v2.0.0): degradado Turquesa→Lila con el
+   título y el chip de color bien visible, mismo patrón que .banner-top. */
+.tarjeta-banner{background:var(--grad-yael);color:#fff;border-radius:8px;padding:.6rem .9rem;display:flex;justify-content:space-between;align-items:center;gap:.6rem;margin-bottom:.7rem}
+.tarjeta-banner .doc-title{color:#fff;font-size:1.1rem}
+.tarjeta-banner .chip{background:rgba(255,255,255,.92);border-color:#fff;font-size:.85rem;padding:.2rem .7rem}
+.tarjeta-progreso{background:var(--purple-light);border-radius:10px;padding:.6rem .9rem .4rem;margin:.5rem 0}
 @media print{
   /* Reglamento y tarjeta: carta, como el papel. El fix de v2.3.13 de la
      App 1 (body padding-bottom:0) ya está arriba y aplica aquí también. */
