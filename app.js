@@ -33,7 +33,7 @@
 'use strict';
 
 /* ---------------- Constantes ---------------- */
-var VERSION = '2.0.2';
+var VERSION = '2.0.3';
 var LS_URL = 'tv_api_url';
 var LS_TOKEN = 'tv_api_token';
 var LS_DEMO = 'tv_demo';
