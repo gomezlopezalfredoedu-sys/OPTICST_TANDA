@@ -1,7 +1,7 @@
 /* ==================================================================
    TANDA VISUAL — PWA (App 2, SEPARADA de la App 1)
    Boutique de Lentes Yael · Sucursal Calle 4 · Solo Calle 4 por ahora.
-   OPTICST NEXUS · Tanda Visual v2.0.1
+   OPTICST NEXUS · Tanda Visual v2.0.4
 
    Reglas (definición aprobada 2026-11-23):
    - Venta a plazos PERSONAL (no es tanda ni fondo común). 10 pagos
@@ -33,7 +33,7 @@
 'use strict';
 
 /* ---------------- Constantes ---------------- */
-var VERSION = '2.0.3';
+var VERSION = '2.0.4';
 var LS_URL = 'tv_api_url';
 var LS_TOKEN = 'tv_api_token';
 var LS_DEMO = 'tv_demo';
@@ -49,6 +49,36 @@ var NEGOCIO = {
   instagram: '@Opticasluna14'
 };
 var GARANTIAS = { adaptacion: 30, armazon: 6, tratamiento: 6 };
+/* ---------- Declaraciones de las firmas digitales (v2.0.4) ----------
+   Cada firma va atada a lo que el cliente declaró: la firma no es
+   solo un garabato. La de aceptación se firma en el paso 2 del wizard
+   (después de LEER la carta); la de entrega se firma al recoger los
+   lentes. Prueba de aceptación y de entrega, no para litigio. */
+var DECLARACION_ACEPTACION = 'He leído las condiciones del programa y acepto y acataré las mismas para la participación de dicho programa.';
+var DECLARACION_ENTREGA = 'Estoy conforme con mis lentes recibidos y entiendo las garantías que tiene mi producto.';
+/* ---------- Tarjeta de EJEMPLO (v2.0.4, Detalle 7) ----------
+   Datos CLARAMENTE FICTICIOS para la tarjeta de ejemplo de la carta.
+   NUNCA se usan datos reales del cliente en el ejemplo: el ejemplo
+   es solo para que el cliente vea cómo será su tarjeta; la tarjeta
+   REAL (con sus datos) es otro documento y se genera a partir del
+   primer pago. Fechas: lunes de muestra de enero a marzo de 2026. */
+var EJEMPLO_TARJETA = {
+  nombre: 'Cliente Ejemplo', clienteId: '0000', numero: 0,
+  fechaInicio: '2026-01-05', entregaEstimada: '2026-01-05',
+  total: 2500, pagoSemanal: 250, ultimoPago: 250,
+  semanas: [
+    { semana: 1, fechaLimite: '2026-01-05', monto: 250 },
+    { semana: 2, fechaLimite: '2026-01-12', monto: 250 },
+    { semana: 3, fechaLimite: '2026-01-19', monto: 250 },
+    { semana: 4, fechaLimite: '2026-01-26', monto: 250 },
+    { semana: 5, fechaLimite: '2026-02-02', monto: 250 },
+    { semana: 6, fechaLimite: '2026-02-09', monto: 250 },
+    { semana: 7, fechaLimite: '2026-02-16', monto: 250 },
+    { semana: 8, fechaLimite: '2026-02-23', monto: 250 },
+    { semana: 9, fechaLimite: '2026-03-02', monto: 250 },
+    { semana: 10, fechaLimite: '2026-03-09', monto: 250 }
+  ]
+};
 /* ---------- Laboratorio Óptico Luna (SOLO órdenes de trabajo) ----------
    Como en la App 1: Yael es el operador principal para la venta al
    cliente; Luna es el operador de proceso, la entidad que elabora los
@@ -224,7 +254,10 @@ var state = {
   panel: null, resumen: null,
   tandasCache: [],
   currentTanda: null, currentCliente: null,
-  currentDoc: null, // {kind: 'reglamento'|'tarjeta'|'orden', tandaId}
+  currentDoc: null, // {kind: 'reglamento'|'tarjeta'|'orden'|'evidencia', tandaId}
+  // v2.0.4 (Detalle 2): imagen del documento pre-generada al abrir la
+  // vista, para que navigator.share se llame SÍNCRONO dentro del toque.
+  docImg: { key: null, blob: null, listo: false },
   wizard: null
 };
 
@@ -432,6 +465,22 @@ function progresoBar(pagados) {
   }
   return '<div class="prog"><div class="prog-segs">' + segs + '</div><small>' + pagados + ' de 10 pagos · ' + pct + '%</small></div>';
 }
+/* ---------------- Lightbox de imágenes (v2.0.4, Detalle 4) ----------------
+   Toca una miniatura (INE, rostro, firmas) y se ve en grande. El
+   overlay se cierra con un toque en cualquier parte. */
+function ampliarImagen(url) {
+  var lb = $('lightbox');
+  var img = $('lightboxImg');
+  if (!lb || !img || !url) return;
+  img.src = url;
+  lb.hidden = false;
+}
+function cablearLightbox() {
+  var lb = $('lightbox');
+  if (!lb) return;
+  lb.addEventListener('click', function () { lb.hidden = true; $('lightboxImg').src = ''; });
+}
+document.addEventListener('DOMContentLoaded', cablearLightbox);
 
 /* ---------------- Navegación ---------------- */
 var VISTAS = ['home', 'wizard', 'buscar', 'tandas', 'ficha', 'pago', 'entrega', 'resumen', 'doc', 'setup'];
@@ -476,6 +525,7 @@ function cargarCatalogos() {
     state.catalogos = d.catalogos || { armazones: [], lentes: [] };
     llenarDropdownsOptometria();
     llenarDropdownsProducto();
+    llenarEntregaOptometria();
   });
 }
 function listasDe(nombre) {
@@ -780,10 +830,23 @@ function irPaso(n) {
     d.hidden = Number(d.dataset.paso) !== n;
   });
   $('wBtnAtras').hidden = (n === 1);
-  $('wBtnSiguiente').hidden = (n === 5);
-  $('wBtnCrear').hidden = (n !== 5);
-  if (n === 5) renderResumenWizard();
+  $('wBtnSiguiente').hidden = (n === 6);
+  $('wBtnCrear').hidden = (n !== 6);
+  // v2.0.4 (Detalle 6): en el paso 2 el cliente LEE la carta antes de
+  // firmar; se renderiza con el nombre del paso 1.
+  if (n === 2) renderCartaWizard();
+  if (n === 6) renderResumenWizard();
   window.scrollTo(0, 0);
+}
+/* Vista previa de la carta en el paso 2 del wizard (Detalle 6): el
+   cliente lee la carta + reglamento ANTES de firmar. Solo lleva el
+   nombre (la tanda aún no existe); el número, la entrega y el plan se
+   llenan al crear la tanda. */
+function renderCartaWizard() {
+  var w = state.wizard;
+  var el = $('wCartaPreview');
+  if (!el) return;
+  el.innerHTML = cartaWizardHTML(w.nombre || '');
 }
 function wizardError(msg) {
   var el = $('wizardError');
@@ -796,15 +859,22 @@ function validarPaso(n) {
   if (n === 1) {
     if (!$('wNombre').value.trim()) { wizardError('Falta el nombre del cliente.'); return false; }
   }
+  // v2.0.4 (Detalle 6): paso 2 = carta + firma de aceptación. La carta
+  // se LEE antes de firmar; la firma va debajo de la declaración.
   if (n === 2) {
     if (!w.clienteExistente) {
-      if (!w.ineFrente) { wizardError('Falta la foto del INE (frente).'); return false; }
-      if (!w.rostro) { wizardError('Falta la foto del rostro.'); return false; }
       if (!state.firmaTerminosPad || state.firmaTerminosPad.estaVacia()) { wizardError('Falta la firma digital de aceptación de términos.'); return false; }
       if (!$('wLeyendaReverso').checked) { wizardError('Confirma que el cliente mostró el reverso de su INE en físico para cotejar la firma.'); return false; }
     }
   }
-  if (n === 4) {
+  // v2.0.4 (Detalle 6): paso 3 = fotos (INE frente + rostro).
+  if (n === 3) {
+    if (!w.clienteExistente) {
+      if (!w.ineFrente) { wizardError('Falta la foto del INE (frente).'); return false; }
+      if (!w.rostro) { wizardError('Falta la foto del rostro.'); return false; }
+    }
+  }
+  if (n === 5) {
     if (!w.totalFinal || num(w.totalFinal, 0) <= 0) { wizardError('Teclea el total final (precio de venta).'); return false; }
     if (!w.numero) { wizardError('Elige el número de tanda (semana de entrega).'); return false; }
     if (w.numero < numeroMinimo(w.colorCliente)) { wizardError('Por su color (' + w.colorCliente + ') el número mínimo es ' + numeroMinimo(w.colorCliente) + '.'); return false; }
@@ -821,7 +891,7 @@ function leerPaso1() {
   w.ocupacion = $('wOcupacion').value.trim();
   w.sexo = $('wSexo').value;
 }
-function leerPaso3() {
+function leerPasoOpto() {
   var w = state.wizard;
   var usa = (document.querySelector('input[name="wUsaLentes"]:checked') || {}).value || '';
   w.optometria = {
@@ -842,7 +912,7 @@ function leerPaso3() {
     recomendacion: $('wRecomendacion').value
   };
 }
-function leerPaso4() {
+function leerPasoProducto() {
   var w = state.wizard;
   w.armazonModelo = $('wArmazonModelo').value.trim();
   w.armazonMarca = $('wArmazonMarca').value.trim();
@@ -912,7 +982,7 @@ function actualizarEntregaPreview() {
 }
 function renderResumenWizard() {
   var w = state.wizard;
-  leerPaso4();
+  leerPasoProducto();
   var plan = null;
   try { plan = calcularPlan(w.totalFinal); } catch (e) {}
   var entrega = w.numero ? entregaEstimada(w.fechaInicio, w.numero) : '—';
@@ -930,8 +1000,8 @@ function renderResumenWizard() {
 /* Crear la tanda: cliente (si es nuevo) → optometría → tanda. */
 function crearTanda() {
   var w = state.wizard;
-  if (!validarPaso(4)) { irPaso(4); return; }
-  leerPaso1(); leerPaso3(); leerPaso4();
+  if (!validarPaso(5)) { irPaso(5); return; }
+  leerPaso1(); leerPasoOpto(); leerPasoProducto();
   $('wBtnCrear').disabled = true;
   $('wBtnCrear').textContent = 'Creando…';
   var errEl = $('wCrearError');
@@ -1013,7 +1083,7 @@ function seleccionarClienteExistente(clienteId) {
     (d.tandas || []).forEach(function (t) { if (t.colorFinal) color = t.colorFinal; });
     w.colorCliente = color;
     $('wClienteInfo').textContent = 'Cliente existente Nº ' + c.id + ' · Color: ' + color +
-      ' · ' + (d.tandas || []).length + ' tanda(s) registrada(s). Ya tiene INE, rostro y firma en su expediente: el paso 2 es opcional.';
+      ' · ' + (d.tandas || []).length + ' tanda(s) registrada(s). Ya tiene INE, rostro y firma en su expediente: los pasos 2 (carta y firma) y 3 (fotos) son opcionales.';
     $('wBuscarResultados').innerHTML = '';
     construirNumeroBotones();
     showOk('Cliente seleccionado: ' + c.nombre);
@@ -1024,17 +1094,18 @@ function seleccionarClienteExistente(clienteId) {
 function cablearWizard() {
   $('wBtnAtras').addEventListener('click', function () {
     if (state.wizard.paso === 2) leerPaso1();
-    if (state.wizard.paso === 4) leerPaso3();
-    if (state.wizard.paso === 5) leerPaso4();
+    if (state.wizard.paso === 4) leerPasoOpto();
+    if (state.wizard.paso === 5) leerPasoOpto();
+    if (state.wizard.paso === 6) leerPasoProducto();
     irPaso(Math.max(1, state.wizard.paso - 1));
   });
   $('wBtnSiguiente').addEventListener('click', function () {
     var n = state.wizard.paso;
     if (n === 1) leerPaso1();
-    if (n === 3) leerPaso3();
-    if (n === 4) { leerPaso4(); actualizarPlanPreview(); actualizarEntregaPreview(); }
+    if (n === 4) leerPasoOpto();
+    if (n === 5) { leerPasoProducto(); actualizarPlanPreview(); actualizarEntregaPreview(); }
     if (!validarPaso(n)) return;
-    irPaso(Math.min(5, n + 1));
+    irPaso(Math.min(6, n + 1));
   });
   $('wBtnCrear').addEventListener('click', crearTanda);
   $('wBuscarCliente').addEventListener('input', function () { buscarClienteWizard(this.value); });
@@ -1122,7 +1193,14 @@ function mostrarExpediente(clienteId) {
     var c = d.cliente;
     var html = '<div class="card"><h3>' + esc(c.nombre) + ' <span class="chip">Nº ' + c.id + '</span></h3>' +
       '<p>Teléfono: ' + esc(c.telefono || '—') + ' · Edad: ' + esc(c.edad || '—') + ' · ' + esc(c.ocupacion || '') + '</p>';
-    if (c.ineFrenteUrl) html += '<p><small>INE (frente) y rostro en el expediente.</small></p>';
+    // v2.0.4 (Detalle 4): las imágenes de verdad, como miniaturas que
+    // se tocan para verlas en grande (INE frente, rostro, firma de
+    // aceptación). La firma de entrega vive en cada tanda (ficha).
+    html += '<h3>Expediente — imágenes</h3><div class="evid-grid">' +
+      '<div class="evid-item"><h4>INE (frente)</h4>' + evidImgHTML(c.ineFrenteUrl, 'INE (frente)') + '</div>' +
+      '<div class="evid-item"><h4>Rostro</h4>' + evidImgHTML(c.rostroUrl, 'Rostro') + '</div>' +
+      '<div class="evid-item"><h4>Firma de aceptación</h4>' + evidImgHTML(c.firmaTerminosUrl, 'Firma de aceptación de términos') + '<p class="hint">“' + esc(DECLARACION_ACEPTACION) + '”</p></div>' +
+      '</div>';
     (d.tandas || []).forEach(function (t) {
       html += '<div class="list-item"><div class="row"><strong>' + esc(t.id) + ' · Nº ' + t.numero + '</strong>' + colorChip(t.color) +
         '<span class="chip">' + esc(t.estado) + '</span></div>' +
@@ -1195,8 +1273,18 @@ function abrirFicha(tandaId) {
     } else {
       html += '<p class="hint">Sin optometría registrada: el cliente debe dar su receta vigente o hacerse el examen de la vista antes de la entrega.</p>';
     }
+    // v2.0.4 (Detalle 4): evidencia — las 4 imágenes del expediente.
+    html += '<h3>Expediente — evidencia</h3><div class="evid-grid">' +
+      '<div class="evid-item"><h4>INE (frente)</h4>' + evidImgHTML(t.cliente.ineFrenteUrl, 'INE (frente)') + '</div>' +
+      '<div class="evid-item"><h4>Rostro</h4>' + evidImgHTML(t.cliente.rostroUrl, 'Rostro') + '</div>' +
+      '<div class="evid-item"><h4>Firma de aceptación</h4>' + evidImgHTML(t.cliente.firmaTerminosUrl, 'Firma de aceptación de términos') + '<p class="hint">“' + esc(DECLARACION_ACEPTACION) + '”</p></div>' +
+      '<div class="evid-item"><h4>Firma de entrega</h4>' + evidImgHTML(t.firmaEntregaUrl, 'Firma de entrega') + '<p class="hint">“' + esc(DECLARACION_ENTREGA) + '”</p></div>' +
+      '</div>' +
+      '<div class="row"><button class="btn btn-secondary" id="btnFichaEvidencia" type="button">Hoja de evidencia</button></div>';
     html += '</div>';
     $('fichaContenido').innerHTML = html;
+    var btnEv = $('btnFichaEvidencia');
+    if (btnEv) btnEv.addEventListener('click', function () { abrirEvidencia(t.id); });
     // Evaluación final (solo si los 10 pagos están hechos).
     var ev = $('fichaEvaluar');
     if (t.pagados >= 10 && !t.colorFinal) {
@@ -1249,7 +1337,7 @@ function cablearFicha() {
   });
   $('btnMsgTarjeta').addEventListener('click', function () {
     var t = state.currentTanda; if (!t) return;
-    abrirTarjeta(t.id, true);
+    abrirTarjeta(t.id);
   });
 }
 
@@ -1380,16 +1468,73 @@ function actualizarEntregaInfo() {
   if (!tandaId) { $('entregaInfo').innerHTML = ''; return; }
   api('getTanda', { id: tandaId }).then(function (t) {
     state.currentTanda = t;
+    var btnGuardar = $('btnEntregaGuardar');
     var aviso = '';
-    if (!t.optometria) aviso = '<p class="error">Sin optometría: el cliente debe dar su receta vigente o hacerse el examen antes de la entrega.</p>';
+    // v2.0.4 (Detalle 5): la entrega se BLOQUEA sin optometría. Sin
+    // graduación no se pueden elaborar los lentes. El botón queda
+    // deshabilitado y se ofrece capturar la optometría aquí mismo.
+    if (!t.optometria) {
+      aviso = '<p class="error">Sin optometría: el cliente debe dar su receta vigente o hacerse el examen antes de la entrega. La entrega está bloqueada hasta capturar la graduación.</p>' +
+        '<div class="wizard-nav"><button class="btn btn-primary" id="btnEntOptCapturar" type="button">Capturar optometría</button></div>';
+      if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Confirmar entrega (bloqueada: sin optometría)'; }
+    } else {
+      if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Confirmar entrega'; }
+    }
     if (t.vencidos >= 1) aviso += '<p class="error">Tiene ' + t.vencidos + ' pago(s) vencido(s): la entrega se recorre hasta ponerse al corriente.</p>';
     $('entregaInfo').innerHTML = '<p><strong>' + esc(t.cliente.nombre) + '</strong> ' + colorChip(t.color) +
       ' · ' + t.pagados + ' de 10 pagos · entrega estimada ' + fechaMX(t.entregaEstimada) + '</p>' + aviso;
+    var btnCap = $('btnEntOptCapturar');
+    if (btnCap) btnCap.addEventListener('click', function () {
+      $('entregaOptometriaBox').hidden = false;
+      $('entregaOptometriaBox').scrollIntoView();
+    });
   }).catch(function (e) { showError('No se pudo cargar la tanda: ' + e.message); });
+}
+/* Llena los desplegables de graduación del formulario de optometría
+   de la vista de entrega (mismos rangos que el wizard). */
+function llenarEntregaOptometria() {
+  var esf = listasDe('Esfera'), cil = listasDe('Cilindro'), eje = listasDe('Eje'), add = listasDe('Add');
+  var fmt = function (v) { return fmtGrad(v); };
+  [['entOptEsfOD', esf], ['entOptEsfOI', esf]].forEach(function (x) { fillSelect($(x[0]), x[1], true, fmt); });
+  [['entOptCilOD', cil], ['entOptCilOI', cil]].forEach(function (x) { fillSelect($(x[0]), x[1], true, fmt); });
+  [['entOptEjeOD', eje], ['entOptEjeOI', eje]].forEach(function (x) { fillSelect($(x[0]), x[1], true); });
+  fillSelect($('entOptAdd'), add, true, fmt);
 }
 function cablearEntrega() {
   $('entregaTanda').addEventListener('change', actualizarEntregaInfo);
   $('entregaFirmaLimpiar').addEventListener('click', function () { if (state.entregaFirmaPad) state.entregaFirmaPad.limpiar(); });
+  llenarEntregaOptometria();
+  // v2.0.4 (Detalle 5): capturar la optometría desde la vista de
+  // entrega (graduación), para desbloquearla. Se guarda con el
+  // tandaId, así que queda ligada a esta tanda.
+  $('btnEntOptGuardar').addEventListener('click', function () {
+    var t = state.currentTanda;
+    var errEl = $('entOptError');
+    errEl.hidden = true;
+    if (!t || !t.cliente) { errEl.hidden = false; errEl.textContent = 'Elige la tanda.'; return; }
+    var grad = {
+      gradEsfOD: $('entOptEsfOD').value, gradCilOD: $('entOptCilOD').value, gradEjeOD: $('entOptEjeOD').value,
+      gradEsfOI: $('entOptEsfOI').value, gradCilOI: $('entOptCilOI').value, gradEjeOI: $('entOptEjeOI').value,
+      gradAdd: $('entOptAdd').value, dnp: $('entOptDnp').value
+    };
+    if (!grad.gradEsfOD && !grad.gradCilOD && !grad.gradEsfOI && !grad.gradCilOI && !grad.gradAdd) {
+      errEl.hidden = false; errEl.textContent = 'Captura al menos la graduación de un ojo.'; return;
+    }
+    $('btnEntOptGuardar').disabled = true;
+    $('btnEntOptGuardar').textContent = 'Guardando…';
+    api('guardarOptometria', Object.assign({ clienteId: t.cliente.id, tandaId: t.id }, grad)).then(function () {
+      $('btnEntOptGuardar').disabled = false;
+      $('btnEntOptGuardar').textContent = 'Guardar optometría';
+      $('entregaOptometriaBox').hidden = true;
+      showOk('Optometría guardada. La entrega quedó desbloqueada.');
+      actualizarEntregaInfo();
+    }).catch(function (e) {
+      $('btnEntOptGuardar').disabled = false;
+      $('btnEntOptGuardar').textContent = 'Guardar optometría';
+      errEl.hidden = false;
+      errEl.textContent = 'No se pudo guardar la optometría: ' + e.message;
+    });
+  });
   $('btnEntregaGuardar').addEventListener('click', function () {
     var tandaId = $('entregaTanda').value;
     var errEl = $('entregaError');
@@ -1419,7 +1564,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 /* ---------------- Documentos: reglamento y tarjeta ---------------- */
-var PAGE_SIZES = { reglamento: 'letter', tarjeta: 'letter', orden: 'letter' };
+var PAGE_SIZES = { reglamento: 'letter', tarjeta: 'letter', orden: 'letter', evidencia: 'letter' };
 function aplicarTamanoPagina(kind) {
   var st = document.getElementById('pageSizeStyle');
   if (!st) {
@@ -1437,53 +1582,144 @@ function docHead(titulo) {
     '<div class="addr">' + esc(NEGOCIO.nombre) + ' · ' + esc(NEGOCIO.programa) + '<br>' +
     esc(NEGOCIO.direccion) + '<br>Tel. ' + esc(NEGOCIO.telefonos) + '</div></div></div>';
 }
-function docReglamentoHTML(d) {
-  var c = d.cliente, t = d;
-  var nombre = esc(c.nombre || '');
-  var html = '<div class="doc doc-reglamento">' + docHead('Tanda Visual') +
-    '<h3>Carta de bienvenida</h3>' +
+/* ---------------- Carta de bienvenida (v2.0.4, Detalle 1, 6 y 7) ----------
+   Diseño IGUAL O SIMILAR al papel original que envió Alfredo (foto
+   TANDA_20260521_020... / PDF TANDA_20260520_192543): ondas
+   turquesa→lila, encabezado Yael + "TANDA VISUAL / Renueva tu visión
+   de forma accesible y organizada", tira de contacto, título "CARTA
+   DE BIENVENIDA", checklist, "Atentamente, Boutique de Lentes Yael",
+   pie "Programa seguro, transparente y respaldado por Ópticas Luna".
+   El texto es el del papel CON la corrección de Alfredo (2026-11-24
+   15:40): "sistema de compra a plazos que te permite estrenar tus
+   lentes antes de liquidarlos, porque confiamos en ti y sabemos las
+   dificultades que puedes enfrentar sin ellos" — REEMPLAZA el
+   "sistema de compra colaborativa" del papel, que contradecía la
+   regla de que NO es fondo común (venta a plazos personal).
+   El reglamento va COMPLETO en el mismo documento, con las garantías
+   MODIFICADAS (30 días adaptación, 6 meses armazón, 6 meses
+   tratamiento), NO las del papel (1 año). La tarjeta de EJEMPLO usa
+   SOLO datos ficticios (EJEMPLO_TARJETA): NUNCA datos reales del
+   cliente. El archivo enviado NO lleva fotos (sin INE ni rostro);
+   la firma de aceptación SÍ va incrustada (Detalle 6).
+   cartaHTML(datos) la usan dos vistas: el documento completo
+   (docReglamentoHTML, con número/entrega/total/firma) y la vista
+   previa del paso 2 del wizard (cartaWizardHTML, solo el nombre: el
+   cliente LEE la carta ANTES de firmar). */
+function cartaHTML(datos) {
+  var nombre = esc(datos.nombre || '');
+  var tieneTanda = !!datos.numero;
+  var asignacion = tieneTanda
+    ? 'Te informamos que se te ha asignado el número <strong>' + esc(String(datos.numero)) + '</strong>. Adjuntamos a este mensaje la documentación necesaria, que incluye:'
+    : 'Al registrarte se te asignará un número de tanda, que determinará tu semana de entrega. Adjuntamos a este mensaje la documentación necesaria, que incluye:';
+  var html = '<div class="doc doc-reglamento doc-carta">' +
+    '<div class="carta-onda carta-onda-top" aria-hidden="true"></div>' +
+    '<div class="carta-head"><img src="logo.png" alt="Boutique de Lentes Yael">' +
+    '<div class="carta-head-txt"><div class="carta-programa"><span class="carta-programa-t">TANDA</span> <span class="carta-programa-v">VISUAL</span></div>' +
+    '<div class="carta-programa-sub">Renueva tu visión de forma accesible y organizada.</div></div></div>' +
+    '<div class="carta-contacto"><span>55 9719 1674<br>56 1158 6976</span><span>contacto@opticasluna.com</span><span>@Opticasluna14</span><span>Calle 4 Nº 342, Agrícola Pantitlán, Iztacalco, CDMX, 08100</span></div>' +
+    '<h2 class="carta-titulo">CARTA DE BIENVENIDA</h2>' +
     '<p>Estimado(a) <strong>' + nombre + '</strong>:</p>' +
-    '<p>Te damos la bienvenida a <strong>Tanda Visual</strong> de ' + esc(NEGOCIO.nombre) +
-    ': renueva tu visión de forma accesible y organizada. Es una modalidad de compra a plazos en la que te apoyamos a adquirir un producto de salud sin tener que esperar a liquidarlo: recibes tus lentes en la semana de tu número y sigues pagando ya con tus lentes en tu poder.</p>' +
-    '<p>Tu número de tanda es el <strong>' + t.numero + '</strong> y tu entrega estimada es el <strong>' + fechaMX(t.entregaEstimada) + '</strong>. ' +
-    'El total de tu compra es de <strong>' + money(t.total) + '</strong>, en 10 pagos semanales de ' + money(t.pagoSemanal) +
-    ' (los primeros 9) y un último pago de ' + money(t.ultimoPago) + '.</p>' +
-    '<h3>Reglamento</h3><ol>' +
-    '<li>El programa consta de <strong>10 pagos semanales</strong>. Las fechas límite son los <strong>lunes</strong>.</li>' +
-    '<li>Al registrarte se te asigna un <strong>número de tanda</strong>, que determina tu <strong>semana de entrega</strong>: con el número ' + t.numero + ', recibes tus lentes en la semana ' + t.numero + '.</li>' +
-    '<li>Un número equivale a <strong>un solo par de lentes</strong>. Para más pares, se asignan números adicionales en forma ascendente.</li>' +
-    '<li>Los pagos se hacen en <strong>efectivo</strong> (en la sucursal) o por <strong>transferencia</strong>. Cada pago se <strong>reporta por WhatsApp (' + esc(NEGOCIO.telefonos.split('/')[1] || '56 1158 6976') + ')</strong> enviando tu nombre completo, tu número de tanda y la semana de pago, anexando el comprobante.</li>' +
-    '<li>En efectivo es tu responsabilidad verificar que el pago se abone bien y pedir tu comprobante. Ópticas Luna no responde por pagos no registrados o sin comprobante.</li>' +
-    '<li>El atraso <strong>recorre tu entrega proporcionalmente</strong>: si te atrasas, tu entrega se mueve hasta que te pongas al corriente.</li>' +
-    '<li>La entrega se hace <strong>hasta el viernes</strong> de tu semana de entrega, de <strong>3:00 a 9:00 pm</strong>. Al recoger tus lentes, haces tu pago de esa semana.</li>' +
-    '<li>Debes dar tu <strong>receta vigente</strong> o hacerte el examen de la vista antes de la entrega.</li>' +
-    '<li>Horarios hábiles para reportar pagos: <strong>lunes a sábado de 9:00 am a 9:00 pm</strong>. El domingo no es hábil. La fecha que cuenta es la fecha en que se registra tu pago en horario laboral: si lo reportas a las 11:59 del último día, se registra al día siguiente y la aplicación lo toma como atraso.</li>' +
-    '<li>En caso de incumplimiento, <strong>renuncias al reembolso</strong> de lo pagado.</li>' +
-    '<li>Garantías: <strong>' + GARANTIAS.adaptacion + ' días de adaptación, ' + GARANTIAS.armazon + ' meses armazón, ' + GARANTIAS.tratamiento + ' meses tratamiento</strong>. No cubre mal uso, caídas, golpes o manipulación incorrecta.</li>' +
-    '</ol>' +
-    '<h3>Términos y condiciones</h3><ol>' +
-    '<li>Para participar debes registrarte con tus datos personales y aceptar estos términos. Tu foto del INE es solo por el frente; el reverso lo muestras en físico para cotejar tu firma de manera visual (no se fotografía ni se guarda).</li>' +
-    '<li>Tu firma digital es prueba de aceptación de estos términos. Al recibir tus lentes firmas digitalmente confirmando la entrega.</li>' +
-    '<li><strong>Asignación del número y entrega en participaciones futuras.</strong><br>' +
-    '3.1 El número de tanda se asigna por Ópticas Luna al registrarte, conforme al calendario y a tu historial de pagos. Tú no eliges tu número.<br>' +
-    '3.2 El número asignado determina la semana en que recibirás tus lentes.<br>' +
-    '3.3 Tu historial de pagos se refleja en tu nivel dentro del programa, que puedes consultar en tu tarjeta de pagos. Con pagos puntuales puedes acceder a una entrega más temprana en tus siguientes participaciones; con atrasos, tu entrega se programa en una semana más tardía.<br>' +
-    '3.4 El número asignado en cada tanda es definitivo. Al aceptar estos términos, aceptas el número asignado y la semana de entrega correspondiente.</li>' +
-    '<li>Tu color dentro del programa (verde, amarillo, naranja o rojo) refleja tu comportamiento de pago en cada tanda y se recalcula por tanda. Un cliente puede rehabilitarse pagando bien en una tanda nueva.</li>' +
-    '</ol>' +
-    '<h3>Tarjeta de pagos — EJEMPLO</h3>' +
+    '<p>¡Bienvenido(a) a Tanda Visual! Este es un sistema de compra a plazos que te permite estrenar tus lentes antes de liquidarlos, porque confiamos en ti y sabemos las dificultades que puedes enfrentar sin ellos.</p>' +
+    '<p>' + asignacion + '</p>';
+  if (tieneTanda) {
+    html += '<div class="carta-datos"><p><strong>Nº de tanda:</strong> ' + esc(String(datos.numero)) + ' · <strong>Entrega estimada:</strong> ' + fechaMX(datos.entregaEstimada) + '</p>' +
+      '<p><strong>Total:</strong> ' + money(datos.total) + ' · <strong>Plan:</strong> 9 pagos semanales de ' + money(datos.pagoSemanal) + ' + último pago de ' + money(datos.ultimoPago) + '</p></div>';
+  } else {
+    html += '<p class="hint">Tu número de tanda, tu entrega estimada y tu plan de pagos se llenarán al crear tu tanda.</p>';
+  }
+  html += '<ul class="carta-checklist">' +
+    '<li>Calendario de pagos y entregas.</li>' +
+    '<li>Datos bancarios y procedimiento para reportar tus depósitos.</li>' +
+    '<li>Reglamento y términos y condiciones.</li></ul>' +
+    '<p>Te invitamos a leer detenidamente cada documento, ya que contienen información importante sobre fechas de pago, funcionamiento de la tanda y otros detalles clave.</p>' +
+    '<p>Si en algún momento tienes dudas o necesitas aclarar algún punto, no dudes en contactarnos. Contamos con los canales de comunicación necesarios para brindarte la mejor atención.</p>' +
+    '<p>Agradecemos tu confianza en Tanda Visual. Estamos seguros de que será una gran experiencia.</p>' +
+    '<p>Atentamente,</p>' +
+    '<p class="carta-firma-nombre">Boutique de Lentes Yael</p>' +
+    '<div class="carta-pie"><strong>Programa seguro, transparente y respaldado por Ópticas Luna.</strong>' +
+    '<div class="carta-pie-items"><span>Calidad en cada lente</span><span>Garantía que te respalda</span><span>Atención que te acompaña</span></div></div>' +
+    '<div class="carta-onda carta-onda-bottom" aria-hidden="true"></div>' +
+    '<h2 class="carta-titulo">REGLAMENTO</h2>' +
+    '<h4>1. GARANTÍA DEL PRODUCTO</h4><ul>' +
+    '<li><strong>Graduación:</strong> ' + GARANTIAS.adaptacion + ' días a partir de la entrega, aplicable en caso de error en la fabricación de los lentes.</li>' +
+    '<li><strong>Armazón:</strong> ' + GARANTIAS.armazon + ' meses por defectos de fabricación (válido únicamente si el cliente adquirió lentes completos).</li>' +
+    '<li><strong>Tratamientos en micas:</strong> ' + GARANTIAS.tratamiento + ' meses, aplicable únicamente en caso de fallas relacionadas con el tratamiento adquirido.</li></ul>' +
+    '<p>La garantía no cubre daños por mal uso, caídas, golpes o manipulación incorrecta.</p>' +
+    '<h4>2. ASIGNACIÓN DE NÚMEROS Y ADQUISICIÓN DE LENTES</h4><ul>' +
+    '<li>Cada número de tanda permite la adquisición de un solo par de lentes.</li>' +
+    '<li>Si el cliente desea adquirir más de un par, deberá solicitar un número adicional dentro de la tanda.</li>' +
+    '<li>La asignación de números adicionales será de forma ascendente. Es decir, si el cliente ya tiene el número 6, su siguiente número deberá ser el 7 o el siguiente disponible en orden.</li></ul>' +
+    '<h4>3. PAGOS Y REPORTES</h4><ul>' +
+    '<li>Los pagos deberán realizarse en tiempo y forma de acuerdo con el calendario establecido.</li>' +
+    '<li>Todos los pagos deben ser reportados a través de los canales indicados, anexando el comprobante correspondiente.</li>' +
+    '<li>El incumplimiento en los pagos puede afectar la entrega del producto y/o la participación en futuras tandas.</li></ul>' +
+    '<h4>4. ENTREGA DE LENTES</h4><ul>' +
+    '<li>Los lentes se entregarán conforme al orden de asignación de números y de acuerdo con el calendario establecido.</li>' +
+    '<li>En caso de retrasos ajenos a la empresa, se notificará oportunamente a los participantes.</li></ul>' +
+    '<h4>5. ENTREGA HASTA EL VIERNES</h4><ul>' +
+    '<li>La entrega se hace <strong>hasta el viernes</strong> de tu semana de entrega, de <strong>3:00 a 9:00 pm</strong>. Al recoger tus lentes, haces tu pago de esa semana.</li></ul>' +
+    '<h4>6. HORARIOS HÁBILES PARA REPORTAR PAGOS</h4><ul>' +
+    '<li><strong>Lunes a sábado de 9:00 am a 9:00 pm.</strong> El domingo no es hábil. La fecha que cuenta es la fecha en que se registra tu pago en horario laboral: si lo reportas a las 11:59 del último día, se registra al día siguiente y la aplicación lo toma como atraso.</li></ul>' +
+    '<h2 class="carta-titulo">TÉRMINOS Y CONDICIONES</h2>' +
+    '<h4>1. REGISTRO Y PARTICIPACIÓN</h4>' +
+    '<p>1.1 Para participar en Tanda Visual, el cliente deberá registrarse con sus datos personales y aceptar estos términos y condiciones.</p>' +
+    '<p>1.2 Al momento del registro, se le asignará un número de tanda que determinará su semana de entrega.</p>' +
+    '<p>1.3 El cliente deberá proporcionar su receta vigente; en caso de no contar con ella, Ópticas Luna podrá realizar un examen de la vista previo a la entrega para garantizar la correcta graduación.</p>' +
+    '<p>1.4 Tu foto del INE es solo por el frente; el reverso lo muestras en físico para cotejar tu firma de manera visual (no se fotografía ni se guarda).</p>' +
+    '<h4>2. PAGOS Y CONDICIONES</h4>' +
+    '<p>2.1 Los pagos deberán realizarse semanalmente según el número de tanda asignado.</p>' +
+    '<p>2.2 Se aceptan pagos en efectivo y transferencias bancarias.</p>' +
+    '<p>2.3 <strong>Política de Pagos en Efectivo:</strong> Es responsabilidad exclusiva del cliente verificar que su pago sea abonado correctamente y solicitar su comprobante de pago, ya que este será necesario para futuras aclaraciones o reclamaciones. Ópticas Luna no se hará responsable por pagos no registrados o sin comprobante.</p>' +
+    '<p>2.4 <strong>Política de Penalización por Depósito Tardío:</strong> En caso de que el cliente no realice sus pagos en el tiempo establecido, Ópticas Luna tendrá derecho a recorrer la fecha de entrega de los lentes proporcionalmente al atraso.</p>' +
+    '<div class="carta-ejemplo-box"><strong>Ejemplo:</strong> un cliente con número asignado 7 debía recibir sus lentes en la Semana 7, pero tiene dos semanas de atraso en los pagos, su entrega podrá programarse hasta la Semana 9 o posterior, o hasta que regularice sus pagos.</div>' +
+    '<p><strong>El cliente renuncia al derecho de reembolso de las cantidades pagadas en caso de incumplimiento en los pagos.</strong></p>' +
+    '<h4>3. ASIGNACIÓN DEL NÚMERO Y ENTREGA EN PARTICIPACIONES FUTURAS</h4>' +
+    '<p>3.1 El número de tanda se asigna por Ópticas Luna al registrarte, conforme al calendario y a tu historial de pagos. Tú no eliges tu número.</p>' +
+    '<p>3.2 El número asignado determina la semana en que recibirás tus lentes.</p>' +
+    '<p>3.3 Tu historial de pagos se refleja en tu nivel dentro del programa, que puedes consultar en tu tarjeta de pagos. Con pagos puntuales puedes acceder a una entrega más temprana en tus siguientes participaciones; con atrasos, tu entrega se programa en una semana más tardía.</p>' +
+    '<p>3.4 El número asignado en cada tanda es definitivo. Al aceptar estos términos, aceptas el número asignado y la semana de entrega correspondiente.</p>' +
+    '<h4>4. COLOR DENTRO DEL PROGRAMA</h4>' +
+    '<p>Tu color dentro del programa (verde, amarillo, naranja o rojo) refleja tu comportamiento de pago en cada tanda y se recalcula por tanda. Un cliente puede rehabilitarse pagando bien en una tanda nueva.</p>' +
+    '<h2 class="carta-titulo">TARJETA DE REGISTRO DE PAGOS — EJEMPLO</h2>' +
     '<p class="ejemplo-aviso">SOLO UN EJEMPLO. Esta tarjeta NO tiene validez como comprobante. Tu tarjeta REAL se genera a partir de tu primer pago y te llega por WhatsApp con cada abono registrado.</p>' +
-    '<p>Nombre: ' + nombre + ' · Nº de cliente: ' + c.id + ' · Nº de tanda: ' + t.numero + ' · Inicio: ' + fechaMX(t.fechaInicio) + ' · Entrega estimada: ' + fechaMX(t.entregaEstimada) + '</p>' +
-    '<table><tr><th>Semana</th><th>Fecha límite</th><th>Monto</th><th>Estado</th></tr>';
-  (t.semanas || []).forEach(function (s) {
-    html += '<tr><td>' + s.semana + '</td><td>' + fechaMX(s.fechaLimite) + '</td><td>' + money(s.monto) + '</td><td>pendiente</td></tr>';
+    '<p><strong>Nombre:</strong> ' + esc(EJEMPLO_TARJETA.nombre) + ' · <strong>Nº de cliente:</strong> ' + esc(EJEMPLO_TARJETA.clienteId) + ' · <strong>Nº de tanda:</strong> ' + esc(String(EJEMPLO_TARJETA.numero)) + '</p>' +
+    '<p><strong>Inicio:</strong> ' + fechaMX(EJEMPLO_TARJETA.fechaInicio) + ' · <strong>Entrega estimada:</strong> ' + fechaMX(EJEMPLO_TARJETA.entregaEstimada) + ' · <strong>Progreso:</strong> 0 de 10 pagos</p>' +
+    '<table><tr><th>Semana</th><th>Fecha límite de pago</th><th>Monto</th><th>Estado</th><th>Fecha de pago</th><th>Comprobante</th></tr>';
+  EJEMPLO_TARJETA.semanas.forEach(function (s) {
+    html += '<tr><td>semana ' + s.semana + '</td><td>' + fechaMX(s.fechaLimite) + '</td><td>' + money(s.monto) + '</td><td>Pendiente</td><td>—</td><td>—</td></tr>';
   });
   html += '</table>' +
-    '<p class="doc-contacto">' + esc(NEGOCIO.nombre) + ' · ' + esc(NEGOCIO.programa) + ' — Renueva tu visión de forma accesible y organizada<br>' +
+    '<p><strong>Total del ejemplo:</strong> ' + money(EJEMPLO_TARJETA.total) + ' · 9 pagos de ' + money(EJEMPLO_TARJETA.pagoSemanal) + ' + último de ' + money(EJEMPLO_TARJETA.ultimoPago) + '</p>' +
+    '<p><strong>Reporta tu pago vía WhatsApp:</strong> 56 1158 6976 · <strong>Métodos de pago:</strong> Transferencia, Efectivo · <strong>Envía tu comprobante con:</strong> nombre completo, número de tanda, semana de pago.</p>';
+  if (datos.firmaUrl) {
+    html += '<div class="carta-firma-aceptacion"><h3>Aceptación de términos</h3>' +
+      '<p class="carta-declaracion">“' + esc(DECLARACION_ACEPTACION) + '”</p>' +
+      '<img src="' + esc(datos.firmaUrl) + '" alt="Firma digital de aceptación de términos">' +
+      '<p><strong>' + nombre + '</strong>' + (datos.fechaFirma ? ' · Firmado el ' + fechaMX(datos.fechaFirma) : '') + '</p></div>';
+  }
+  html += '<p class="doc-contacto">' + esc(NEGOCIO.nombre) + ' · ' + esc(NEGOCIO.programa) + ' — Renueva tu visión de forma accesible y organizada<br>' +
     'Tel. ' + esc(NEGOCIO.telefonos) + ' · ' + esc(NEGOCIO.correo) + ' · ' + esc(NEGOCIO.instagram) + '<br>' +
     esc(NEGOCIO.direccion) + ' · Respaldado por Ópticas Luna</p>' +
+    '<div class="carta-onda carta-onda-bottom" aria-hidden="true"></div>' +
     '</div>';
   return html;
+}
+/* Documento completo de la carta (tanda ya creada): con sus datos
+   personales y su firma de aceptación incrustada. SIN fotos (sin INE
+   ni rostro): las fotos se quedan solo en el expediente interno. */
+function docReglamentoHTML(d) {
+  var c = d.cliente || {};
+  return cartaHTML({
+    nombre: c.nombre, clienteId: c.id, numero: d.numero,
+    fechaInicio: d.fechaInicio, entregaEstimada: d.entregaEstimada,
+    total: d.total, pagoSemanal: d.pagoSemanal, ultimoPago: d.ultimoPago,
+    firmaUrl: c.firmaTerminosUrl || '', fechaFirma: c.creado || d.fechaInicio
+  });
+}
+/* Vista previa de la carta en el paso 2 del wizard: el cliente la LEE
+   antes de firmar. Solo lleva el nombre (la tanda aún no existe). */
+function cartaWizardHTML(nombre) {
+  return cartaHTML({ nombre: nombre });
 }
 function estadoSemanaTxt(s) {
   var e = s.estadoMuestra || s.estado;
@@ -1498,7 +1734,10 @@ function docTarjetaHTML(d) {
   var colorT = t.color || d.color || 'Verde';
   // v2.0.0: banner Yael (degradado Turquesa→Lila) con el chip de color
   // bien visible, y el progreso destacado en su propio bloque.
-  var html = '<div class="doc doc-tarjeta">' + docHead('Tarjeta de registro de pagos') +
+  // v2.0.4 (Detalle 3): marca de agua de Yael al centro de la tarjeta,
+  // EN GRANDE, con transparencia para que el contenido se vea
+  // (.doc-watermark, mismo patrón que el comprobante de la App 1).
+  var html = '<div class="doc doc-tarjeta"><div class="doc-watermark"></div>' + docHead('Tarjeta de registro de pagos') +
     '<div class="tarjeta-banner"><span class="doc-title">Tarjeta de pagos</span>' + colorChip(colorT) + '</div>' +
     '<p><strong>Nombre:</strong> ' + esc(c.nombre) + ' · <strong>Nº de cliente:</strong> ' + esc(c.id) +
     ' · <strong>Nº de tanda:</strong> ' + esc(t.numero) + '</p>' +
@@ -1520,19 +1759,68 @@ function docTarjetaHTML(d) {
     '</div>';
   return html;
 }
+/* ---------------- Hoja de evidencia (v2.0.4, Detalle 4) ----------------
+   Formato para mostrarle al cliente en caso de conflicto: reúne las 4
+   imágenes del expediente (INE frente, rostro, firma de aceptación y
+   firma de entrega) con sus etiquetas + datos del cliente y la tanda.
+   Cada firma va con su DECLARACIÓN y su fecha debajo, para que la
+   firma quede atada a lo que el cliente declaró. Documento imprimible
+   (PDF) y compartible (PNG), como los demás. Las imágenes se guardan
+   en la carpeta privada de Drive; las URLs son de miniatura y se ven
+   con la sesión de Google del dueño en el celular. */
+function evidImgHTML(url, etiqueta) {
+  if (!url) return '<div class="evid-sin-img">Sin imagen registrada — ' + esc(etiqueta) + '</div>';
+  return '<img class="evid-img" src="' + esc(url) + '" alt="' + esc(etiqueta) + '" onclick="ampliarImagen(\'' + esc(url) + '\')">';
+}
+function docEvidenciaHTML(d) {
+  var c = d.cliente || {};
+  var html = '<div class="doc doc-evidencia">' + docHead('Hoja de evidencia') +
+    '<p class="hint">Expediente de evidencia del programa Tanda Visual. Las imágenes se guardan en la carpeta privada de Drive del negocio; este formato es para mostrarle al cliente en caso de conflicto.</p>' +
+    '<p><strong>Cliente:</strong> ' + esc(c.nombre || '') + ' · <strong>Nº de cliente:</strong> ' + esc(c.id || '') + ' · <strong>Teléfono:</strong> ' + esc(c.telefono || '—') + '</p>' +
+    '<p><strong>Tanda:</strong> ' + esc(d.id || '') + ' · <strong>Nº de tanda:</strong> ' + esc(String(d.numero || '')) + ' · <strong>Inicio:</strong> ' + fechaMX(d.fechaInicio) + ' · <strong>Entrega estimada:</strong> ' + fechaMX(d.entregaEstimada) + (d.fechaEntrega ? ' · <strong>Entregada:</strong> ' + fechaMX(d.fechaEntrega) : '') + '</p>' +
+    '<p><strong>Total:</strong> ' + money(d.total) + ' · <strong>Color actual:</strong> ' + esc(d.color || 'Verde') + '</p>' +
+    '<h3>Identidad</h3>' +
+    '<div class="evid-grid">' +
+    '<div class="evid-item"><h4>INE (frente)</h4>' + evidImgHTML(c.ineFrenteUrl, 'INE (frente)') + '<p class="hint">Solo el frente, por seguridad del cliente. El reverso se muestra en físico para cotejar la firma de manera visual (no se fotografía ni se guarda).</p></div>' +
+    '<div class="evid-item"><h4>Rostro</h4>' + evidImgHTML(c.rostroUrl, 'Rostro') + '</div>' +
+    '</div>' +
+    '<h3>Firma de aceptación de términos</h3>' +
+    '<p class="carta-declaracion">“' + esc(DECLARACION_ACEPTACION) + '”</p>' +
+    evidImgHTML(c.firmaTerminosUrl, 'Firma de aceptación de términos') +
+    '<p><strong>' + esc(c.nombre || '') + '</strong>' + (c.creado ? ' · Firmado el ' + fechaMX(c.creado) : '') + '</p>' +
+    '<h3>Firma de entrega — recepción de los lentes</h3>' +
+    '<p class="carta-declaracion">“' + esc(DECLARACION_ENTREGA) + '”</p>' +
+    evidImgHTML(d.firmaEntregaUrl, 'Firma de entrega') +
+    '<p><strong>' + esc(c.nombre || '') + '</strong>' + (d.fechaEntrega ? ' · Firmado el ' + fechaMX(d.fechaEntrega) : ' · Aún no entregado') + '</p>' +
+    '<p class="doc-contacto">' + esc(NEGOCIO.nombre) + ' · ' + esc(NEGOCIO.programa) + '<br>' +
+    'Tel. ' + esc(NEGOCIO.telefonos) + ' · ' + esc(NEGOCIO.correo) + ' · ' + esc(NEGOCIO.instagram) + '<br>' +
+    esc(NEGOCIO.direccion) + ' · Respaldado por Ópticas Luna</p>' +
+    '</div>';
+  return html;
+}
 
-/* ---------------- Vista de documento ---------------- */
+/* ---------------- Vista de documento ----------------
+   v2.0.4 (Detalle 2): al abrir un documento se PRE-GENERA su imagen
+   (PNG) y el botón "Compartir por WhatsApp" queda en "Generando
+   imagen…" hasta que esté lista; así navigator.share se llama
+   síncrono dentro del toque y ya no falla con el error de gesto.
+   Los 4 documentos son compartibles: carta, tarjeta, orden y
+   evidencia. El autoShare (abrir y compartir solo) se quitó: el
+   fetch asíncrono rompía el gesto y por eso fallaba el primer
+   intento; ahora se abre la vista y el botón de compartir ya está
+   listo con un solo toque. */
 function abrirReglamento(tandaId) {
   api('getTanda', { id: tandaId }).then(function (d) {
     state.currentTanda = d;
     state.currentDoc = { kind: 'reglamento', tandaId: tandaId };
     $('docArea').innerHTML = docReglamentoHTML(d);
-    $('btnDocCompartir').hidden = true;
+    $('btnDocCompartir').hidden = false;
     aplicarTamanoPagina('reglamento');
     show('doc');
+    prepararImagenDoc();
   }).catch(function (e) { showError('No se pudo abrir el reglamento: ' + e.message); });
 }
-function abrirTarjeta(tandaId, autoShare) {
+function abrirTarjeta(tandaId) {
   api('getTarjeta', { id: tandaId }).then(function (d) {
     state.currentTanda = d;
     state.currentDoc = { kind: 'tarjeta', tandaId: tandaId };
@@ -1540,8 +1828,19 @@ function abrirTarjeta(tandaId, autoShare) {
     $('btnDocCompartir').hidden = false;
     aplicarTamanoPagina('tarjeta');
     show('doc');
-    if (autoShare) setTimeout(compartirDoc, 400);
+    prepararImagenDoc();
   }).catch(function (e) { showError('No se pudo abrir la tarjeta: ' + e.message); });
+}
+function abrirEvidencia(tandaId) {
+  api('getTanda', { id: tandaId }).then(function (d) {
+    state.currentTanda = d;
+    state.currentDoc = { kind: 'evidencia', tandaId: tandaId };
+    $('docArea').innerHTML = docEvidenciaHTML(d);
+    $('btnDocCompartir').hidden = false;
+    aplicarTamanoPagina('evidencia');
+    show('doc');
+    prepararImagenDoc();
+  }).catch(function (e) { showError('No se pudo abrir la hoja de evidencia: ' + e.message); });
 }
 /* ---------------- Orden de trabajo (Laboratorio Óptico Luna) ----------
    v2.0.2: la App 2 NO tenía órdenes de trabajo. Se agregan espejo de la
@@ -1592,6 +1891,7 @@ function abrirOrden(tandaId) {
     $('btnDocCompartir').hidden = false;
     aplicarTamanoPagina('orden');
     show('doc');
+    prepararImagenDoc();
   }).catch(function (e) { showError('No se pudo abrir la orden de trabajo: ' + e.message); });
 }
 function mensajeOrden(d) {
@@ -1614,6 +1914,22 @@ function cargarImagen(src) {
     img.onload = function () { clearTimeout(t); resolve(img); };
     img.onerror = function () { clearTimeout(t); reject(new Error('No se pudo cargar ' + src)); };
     img.src = src;
+  });
+}
+/* v2.0.4: carga una imagen de Drive (miniatura) para pintarla en un
+   canvas. Con crossOrigin='anonymous': si el servidor no manda CORS,
+   la imagen falla al cargar y se devuelve null (el pintor pone un
+   recuadro con la etiqueta en su lugar). Sin CORS, pintar la imagen
+   mancharía el canvas y toBlob fallaría. Nunca rechaza. */
+function cargarImagenSegura(url) {
+  return new Promise(function (resolve) {
+    if (!url) return resolve(null);
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    var t = setTimeout(function () { resolve(null); }, 8000);
+    img.onload = function () { clearTimeout(t); resolve(img); };
+    img.onerror = function () { clearTimeout(t); resolve(null); };
+    img.src = url;
   });
 }
 function trazoRedondeado(ctx, x, y, w, h, r) {
@@ -1652,12 +1968,28 @@ function texto(ctx, s, x, y, fuente, color, align, dibujar) {
   if (dibujar) ctx.fillText(s, x, y);
   return ctx.measureText(s).width;
 }
-function dibujarTarjeta(ctx, doc, logo, escala, dibujar) {
+function dibujarTarjeta(ctx, doc, logo, escala, dibujar, wmImg, altoTotal) {
   var F = 'system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif';
   var tinta = '#241f31';
   var W = 528, M = 20, cw = W - 2 * M, LH = 17;
   var k = escala || 1;
   var y = M;
+  // v2.0.4 (Detalle 3): marca de agua de Yael al centro de la tarjeta,
+  // EN GRANDE, alfa 0.12, detrás del contenido. El alto total se conoce
+  // por la pasada de medición (altoTotal), así que queda centrada en
+  // vertical. Los fondos de la tabla son semitransparentes para que la
+  // marca se vea a través de ellos; el texto va encima, opaco.
+  if (dibujar && wmImg) {
+    try {
+      var wmW = 360;
+      var wmH = Math.round(wmW * (wmImg.naturalHeight || wmImg.height || 1024) / (wmImg.naturalWidth || wmImg.width || 1024));
+      var wmY = altoTotal ? (altoTotal / 2 - wmH / 2) : 90;
+      ctx.save();
+      ctx.globalAlpha = 0.12;
+      ctx.drawImage(wmImg, (W - wmW) / 2, wmY, wmW, wmH);
+      ctx.restore();
+    } catch (e) {}
+  }
   // Banner degradado.
   if (dibujar) {
     var grad = ctx.createLinearGradient(M, y, W - M, y);
@@ -1721,7 +2053,7 @@ function dibujarTarjeta(ctx, doc, logo, escala, dibujar) {
   // Tabla de semanas.
   var xSem = M, xLim = M + 62, xMon = M + 190, xEst = M + 300, xPag = M + 400;
   if (dibujar) {
-    ctx.fillStyle = '#efe9fb';
+    ctx.fillStyle = 'rgba(239,233,251,0.6)';
     ctx.fillRect(M, y, cw, 26);
     texto(ctx, 'Sem.', xSem + 4, y + 18, fuenteDe(F, 13, true), '#6f55b8', 'left', true);
     texto(ctx, 'Límite', xLim, y + 18, fuenteDe(F, 13, true), '#6f55b8', 'left', true);
@@ -1733,7 +2065,7 @@ function dibujarTarjeta(ctx, doc, logo, escala, dibujar) {
   (doc.semanas || []).forEach(function (s, i) {
     var filaY = y + 4;
     if (dibujar) {
-      if (i % 2 === 0) { ctx.fillStyle = '#f7f5fc'; ctx.fillRect(M, y, cw, LH + 8); }
+      if (i % 2 === 0) { ctx.fillStyle = 'rgba(247,245,252,0.55)'; ctx.fillRect(M, y, cw, LH + 8); }
       ctx.strokeStyle = '#e3ddf2';
       ctx.strokeRect(M + 0.5, y + 0.5, cw - 1, LH + 8);
       texto(ctx, String(s.semana), xSem + 4, filaY + 13, fuenteDe(F, 13, false), tinta, 'left', true);
@@ -1746,7 +2078,7 @@ function dibujarTarjeta(ctx, doc, logo, escala, dibujar) {
   });
   y += 10;
   if (dibujar) {
-    ctx.fillStyle = '#efe9fb';
+    ctx.fillStyle = 'rgba(239,233,251,0.6)';
     trazoRedondeado(ctx, M, y, cw, 52, 8);
     ctx.fill();
     texto(ctx, NEGOCIO.nombre + ' · ' + NEGOCIO.programa, M + 12, y + 20, fuenteDe(F, 13, true), '#6f55b8', 'left', true);
@@ -1755,9 +2087,326 @@ function dibujarTarjeta(ctx, doc, logo, escala, dibujar) {
   y += 52 + M;
   return { ancho: Math.round(W * k), alto: Math.round(y * k) };
 }
+/* ---------------- Imagen de la carta (canvas, patrón tarjeta) ----------
+   v2.0.4 (Detalle 1 y 6): el archivo completo (carta + reglamento +
+   tarjeta de ejemplo + firma de aceptación) se comparte por WhatsApp
+   como PNG, igual que la tarjeta y la orden. Pintor 2 pasadas (medir
+   + dibujar), mismo patrón que dibujarTarjeta. La tarjeta de ejemplo
+   usa SOLO los datos ficticios de EJEMPLO_TARJETA (nunca datos reales).
+   SIN fotos (sin INE ni rostro). La firma de aceptación se pinta si
+   se pudo cargar (cargarImagenSegura); si no, queda el texto
+   "Firmado digitalmente el …". Escala 1.5 (el documento es largo). */
+function dibujarCarta(ctx, doc, logoYael, firmaImg, escala, dibujar) {
+  var F = 'system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif';
+  var tinta = '#241f31';
+  var lila = '#9076DA', lilaOsc = '#6f55b8', turq = '#40C5D2';
+  var W = 528, M = 20, cw = W - 2 * M;
+  var k = escala || 1;
+  var y = 0;
+  var c = doc.cliente || {}, t = doc;
+  function lineas(txt, tam, negrita, ancho) {
+    ctx.font = fuenteDe(F, tam, negrita);
+    return envolverTexto(ctx, txt, ancho || cw);
+  }
+  function parrafo(txt, tam, negrita, color, gap) {
+    tam = tam || 13; color = color || tinta;
+    var ls = lineas(txt, tam, negrita);
+    ls.forEach(function (ln) {
+      if (dibujar) texto(ctx, ln, M, y, fuenteDe(F, tam, negrita), color, 'left', true);
+      y += tam + 5;
+    });
+    y += (gap === undefined ? 6 : gap);
+  }
+  function bullet(txt, tam) {
+    tam = tam || 12.5;
+    var ls = lineas(txt, tam, false, cw - 16);
+    ls.forEach(function (ln, i) {
+      if (dibujar) texto(ctx, (i === 0 ? '•  ' : '    ') + ln, M, y, fuenteDe(F, tam, false), tinta, 'left', true);
+      y += tam + 5;
+    });
+    y += 3;
+  }
+  function seccion(txt) {
+    y += 6;
+    if (dibujar) texto(ctx, txt, M, y, fuenteDe(F, 14, true), lilaOsc, 'left', true);
+    y += 14 + 8;
+  }
+  function tituloCentrado(txt) {
+    y += 8;
+    ctx.font = fuenteDe(F, 17, true);
+    var wTxt = ctx.measureText(txt).width;
+    if (dibujar) {
+      var g = ctx.createLinearGradient(M + (cw - wTxt) / 2, 0, M + (cw - wTxt) / 2 + wTxt, 0);
+      g.addColorStop(0, turq); g.addColorStop(1, lila);
+      ctx.fillStyle = g;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(txt, W / 2, y);
+      ctx.fillStyle = turq;
+      ctx.fillRect(W / 2 - 30, y + 6, 60, 2);
+    }
+    y += 17 + 14;
+  }
+  // Onda superior (turquesa→lila).
+  if (dibujar) {
+    var gTop = ctx.createLinearGradient(0, 0, W, 0);
+    gTop.addColorStop(0, turq); gTop.addColorStop(1, lila);
+    ctx.fillStyle = gTop;
+    ctx.fillRect(0, 0, W, 56);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(W / 2, 56, W * 0.55, 22, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  y += 64;
+  // Encabezado: logo Yael + TANDA VISUAL.
+  var logoH = 44, logoW = 0;
+  if (logoYael) {
+    logoW = Math.round(logoH * (logoYael.naturalWidth || logoYael.width || 300) / (logoYael.naturalHeight || logoYael.height || 100));
+  }
+  var headX = M + logoW + 14;
+  var headW = W - M - headX;
+  ctx.font = fuenteDe(F, 16, true);
+  var wTanda = ctx.measureText('TANDA ').width;
+  ctx.font = fuenteDe(F, 11, false);
+  var subLin = envolverTexto(ctx, 'Renueva tu visión de forma accesible y organizada.', headW);
+  var headH = Math.max(logoH, 20 + subLin.length * 14 + 4);
+  if (dibujar) {
+    if (logoYael) { try { ctx.drawImage(logoYael, M, y, logoW, logoH); } catch (e) {} }
+    texto(ctx, 'TANDA ', headX, y + 20, fuenteDe(F, 16, true), '#2b9aa8', 'left', true);
+    texto(ctx, 'VISUAL', headX + wTanda, y + 20, fuenteDe(F, 16, true), lila, 'left', true);
+    subLin.forEach(function (ln, i) {
+      texto(ctx, ln, headX, y + 38 + i * 14, fuenteDe(F, 11, false), '#6b6478', 'left', true);
+    });
+  }
+  y += headH + 10;
+  // Tira de contacto.
+  if (dibujar) {
+    ctx.strokeStyle = turq; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(M, y); ctx.lineTo(W - M, y); ctx.stroke();
+  }
+  y += 8;
+  var contacto = '55 9719 1674 / 56 1158 6976 · contacto@opticasluna.com · @Opticasluna14 · ' + NEGOCIO.direccion;
+  var conLin = lineas(contacto, 11, false);
+  conLin.forEach(function (ln) {
+    if (dibujar) texto(ctx, ln, W / 2, y, fuenteDe(F, 11, false), '#6b6478', 'center', true);
+    y += 11 + 4;
+  });
+  y += 6;
+  // Carta de bienvenida.
+  tituloCentrado('CARTA DE BIENVENIDA');
+  parrafo('Estimado(a) ' + (c.nombre || '') + ':', 13, true);
+  parrafo('¡Bienvenido(a) a Tanda Visual! Este es un sistema de compra a plazos que te permite estrenar tus lentes antes de liquidarlos, porque confiamos en ti y sabemos las dificultades que puedes enfrentar sin ellos.', 13);
+  parrafo('Te informamos que se te ha asignado el número ' + (t.numero || '') + '. Adjuntamos a este mensaje la documentación necesaria, que incluye:', 13);
+  // Datos personalizados.
+  if (dibujar) {
+    ctx.fillStyle = 'rgba(239,233,251,0.8)';
+    trazoRedondeado(ctx, M, y, cw, 52, 8);
+    ctx.fill();
+  }
+  var datosLin = [
+    'Nº de tanda: ' + (t.numero || '') + '   ·   Entrega estimada: ' + fechaMX(t.entregaEstimada),
+    'Total: ' + money(t.total) + '   ·   Plan: 9 pagos de ' + money(t.pagoSemanal) + ' + último de ' + money(t.ultimoPago)
+  ];
+  datosLin.forEach(function (ln) {
+    if (dibujar) texto(ctx, ln, M + 12, y + 20, fuenteDe(F, 13, true), tinta, 'left', true);
+    y += 22;
+  });
+  y += 8 + 6;
+  // Checklist.
+  ['Calendario de pagos y entregas.', 'Datos bancarios y procedimiento para reportar tus depósitos.', 'Reglamento y términos y condiciones.'].forEach(function (item) {
+    if (dibujar) texto(ctx, '✓  ' + item, M, y, fuenteDe(F, 13, false), tinta, 'left', true);
+    y += 13 + 8;
+  });
+  y += 4;
+  parrafo('Te invitamos a leer detenidamente cada documento, ya que contienen información importante sobre fechas de pago, funcionamiento de la tanda y otros detalles clave.', 13);
+  parrafo('Si en algún momento tienes dudas o necesitas aclarar algún punto, no dudes en contactarnos. Contamos con los canales de comunicación necesarios para brindarte la mejor atención.', 13);
+  parrafo('Agradecemos tu confianza en Tanda Visual. Estamos seguros de que será una gran experiencia.', 13);
+  parrafo('Atentamente,', 13);
+  if (dibujar) texto(ctx, 'Boutique de Lentes Yael', M, y, '20px "Segoe Script","Brush Script MT",cursive', lila, 'left', true);
+  y += 20 + 10;
+  // Pie del papel.
+  parrafo('Programa seguro, transparente y respaldado por Ópticas Luna.', 12, true, lilaOsc, 2);
+  parrafo('Calidad en cada lente   ·   Garantía que te respalda   ·   Atención que te acompaña', 11, false, '#6b6478', 4);
+  // Onda inferior.
+  if (dibujar) {
+    var gBot = ctx.createLinearGradient(0, y, W, y);
+    gBot.addColorStop(0, turq); gBot.addColorStop(1, lila);
+    ctx.fillStyle = gBot;
+    ctx.fillRect(0, y, W, 46);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(W / 2, y, W * 0.55, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  y += 46 + 14;
+  // Reglamento.
+  tituloCentrado('REGLAMENTO');
+  seccion('1. GARANTÍA DEL PRODUCTO');
+  bullet('Graduación: ' + GARANTIAS.adaptacion + ' días a partir de la entrega, aplicable en caso de error en la fabricación de los lentes.');
+  bullet('Armazón: ' + GARANTIAS.armazon + ' meses por defectos de fabricación (válido únicamente si el cliente adquirió lentes completos).');
+  bullet('Tratamientos en micas: ' + GARANTIAS.tratamiento + ' meses, aplicable únicamente en caso de fallas relacionadas con el tratamiento adquirido.');
+  parrafo('La garantía no cubre daños por mal uso, caídas, golpes o manipulación incorrecta.', 12.5);
+  seccion('2. ASIGNACIÓN DE NÚMEROS Y ADQUISICIÓN DE LENTES');
+  bullet('Cada número de tanda permite la adquisición de un solo par de lentes.');
+  bullet('Si el cliente desea adquirir más de un par, deberá solicitar un número adicional dentro de la tanda.');
+  bullet('La asignación de números adicionales será de forma ascendente. Es decir, si el cliente ya tiene el número 6, su siguiente número deberá ser el 7 o el siguiente disponible en orden.');
+  seccion('3. PAGOS Y REPORTES');
+  bullet('Los pagos deberán realizarse en tiempo y forma de acuerdo con el calendario establecido.');
+  bullet('Todos los pagos deben ser reportados a través de los canales indicados, anexando el comprobante correspondiente.');
+  bullet('El incumplimiento en los pagos puede afectar la entrega del producto y/o la participación en futuras tandas.');
+  seccion('4. ENTREGA DE LENTES');
+  bullet('Los lentes se entregarán conforme al orden de asignación de números y de acuerdo con el calendario establecido.');
+  bullet('En caso de retrasos ajenos a la empresa, se notificará oportunamente a los participantes.');
+  seccion('5. ENTREGA HASTA EL VIERNES');
+  bullet('La entrega se hace hasta el viernes de tu semana de entrega, de 3:00 a 9:00 pm. Al recoger tus lentes, haces tu pago de esa semana.');
+  seccion('6. HORARIOS HÁBILES PARA REPORTAR PAGOS');
+  bullet('Lunes a sábado de 9:00 am a 9:00 pm. El domingo no es hábil. La fecha que cuenta es la fecha en que se registra tu pago en horario laboral: si lo reportas a las 11:59 del último día, se registra al día siguiente y la aplicación lo toma como atraso.');
+  // Términos y condiciones.
+  tituloCentrado('TÉRMINOS Y CONDICIONES');
+  seccion('1. REGISTRO Y PARTICIPACIÓN');
+  parrafo('1.1 Para participar en Tanda Visual, el cliente deberá registrarse con sus datos personales y aceptar estos términos y condiciones.', 12.5);
+  parrafo('1.2 Al momento del registro, se le asignará un número de tanda que determinará su semana de entrega.', 12.5);
+  parrafo('1.3 El cliente deberá proporcionar su receta vigente; en caso de no contar con ella, Ópticas Luna podrá realizar un examen de la vista previo a la entrega para garantizar la correcta graduación.', 12.5);
+  parrafo('1.4 Tu foto del INE es solo por el frente; el reverso lo muestras en físico para cotejar tu firma de manera visual (no se fotografía ni se guarda).', 12.5);
+  seccion('2. PAGOS Y CONDICIONES');
+  parrafo('2.1 Los pagos deberán realizarse semanalmente según el número de tanda asignado.', 12.5);
+  parrafo('2.2 Se aceptan pagos en efectivo y transferencias bancarias.', 12.5);
+  parrafo('2.3 Política de Pagos en Efectivo: Es responsabilidad exclusiva del cliente verificar que su pago sea abonado correctamente y solicitar su comprobante de pago, ya que este será necesario para futuras aclaraciones o reclamaciones. Ópticas Luna no se hará responsable por pagos no registrados o sin comprobante.', 12.5);
+  parrafo('2.4 Política de Penalización por Depósito Tardío: En caso de que el cliente no realice sus pagos en el tiempo establecido, Ópticas Luna tendrá derecho a recorrer la fecha de entrega de los lentes proporcionalmente al atraso.', 12.5);
+  // Caja de ejemplo.
+  var ejTxt = 'Ejemplo: un cliente con número asignado 7 debía recibir sus lentes en la Semana 7, pero tiene dos semanas de atraso en los pagos, su entrega podrá programarse hasta la Semana 9 o posterior, o hasta que regularice sus pagos.';
+  var ejLin = lineas(ejTxt, 12.5, false, cw - 24);
+  if (dibujar) {
+    ctx.fillStyle = '#e8f6f8';
+    trazoRedondeado(ctx, M, y, cw, ejLin.length * 17.5 + 12, 8);
+    ctx.fill();
+  }
+  ejLin.forEach(function (ln) {
+    if (dibujar) texto(ctx, ln, M + 12, y + 18, fuenteDe(F, 12.5, false), tinta, 'left', true);
+    y += 17.5;
+  });
+  y += 12 + 4;
+  parrafo('El cliente renuncia al derecho de reembolso de las cantidades pagadas en caso de incumplimiento en los pagos.', 12.5, true);
+  seccion('3. ASIGNACIÓN DEL NÚMERO Y ENTREGA EN PARTICIPACIONES FUTURAS');
+  parrafo('3.1 El número de tanda se asigna por Ópticas Luna al registrarte, conforme al calendario y a tu historial de pagos. Tú no eliges tu número.', 12.5);
+  parrafo('3.2 El número asignado determina la semana en que recibirás tus lentes.', 12.5);
+  parrafo('3.3 Tu historial de pagos se refleja en tu nivel dentro del programa, que puedes consultar en tu tarjeta de pagos. Con pagos puntuales puedes acceder a una entrega más temprana en tus siguientes participaciones; con atrasos, tu entrega se programa en una semana más tardía.', 12.5);
+  parrafo('3.4 El número asignado en cada tanda es definitivo. Al aceptar estos términos, aceptas el número asignado y la semana de entrega correspondiente.', 12.5);
+  seccion('4. COLOR DENTRO DEL PROGRAMA');
+  parrafo('Tu color dentro del programa (verde, amarillo, naranja o rojo) refleja tu comportamiento de pago en cada tanda y se recalcula por tanda. Un cliente puede rehabilitarse pagando bien en una tanda nueva.', 12.5);
+  // Tarjeta de ejemplo (SOLO datos ficticios).
+  tituloCentrado('TARJETA DE REGISTRO DE PAGOS — EJEMPLO');
+  var aviso = 'SOLO UN EJEMPLO. Esta tarjeta NO tiene validez como comprobante. Tu tarjeta REAL se genera a partir de tu primer pago y te llega por WhatsApp con cada abono registrado.';
+  var avLin = lineas(aviso, 12, true, cw - 24);
+  if (dibujar) {
+    ctx.fillStyle = '#fdecea';
+    trazoRedondeado(ctx, M, y, cw, avLin.length * 17 + 12, 8);
+    ctx.fill();
+  }
+  avLin.forEach(function (ln) {
+    if (dibujar) texto(ctx, ln, M + 12, y + 17, fuenteDe(F, 12, true), '#b3261e', 'left', true);
+    y += 17;
+  });
+  y += 12 + 4;
+  parrafo('Nombre: ' + EJEMPLO_TARJETA.nombre + '   ·   Nº de cliente: ' + EJEMPLO_TARJETA.clienteId + '   ·   Nº de tanda: ' + EJEMPLO_TARJETA.numero, 12.5, true);
+  parrafo('Inicio: ' + fechaMX(EJEMPLO_TARJETA.fechaInicio) + '   ·   Entrega estimada: ' + fechaMX(EJEMPLO_TARJETA.entregaEstimada) + '   ·   Progreso: 0 de 10 pagos', 12.5);
+  // Tabla de ejemplo.
+  var xSem = M, xLim = M + 72, xMon = M + 180, xEst = M + 258, xPag = M + 348, xCom = M + 428;
+  if (dibujar) {
+    ctx.fillStyle = 'rgba(239,233,251,0.8)';
+    ctx.fillRect(M, y, cw, 24);
+    texto(ctx, 'Semana', xSem + 4, y + 17, fuenteDe(F, 11, true), lilaOsc, 'left', true);
+    texto(ctx, 'Fecha límite', xLim, y + 17, fuenteDe(F, 11, true), lilaOsc, 'left', true);
+    texto(ctx, 'Monto', xMon, y + 17, fuenteDe(F, 11, true), lilaOsc, 'left', true);
+    texto(ctx, 'Estado', xEst, y + 17, fuenteDe(F, 11, true), lilaOsc, 'left', true);
+    texto(ctx, 'Fecha de pago', xPag, y + 17, fuenteDe(F, 11, true), lilaOsc, 'left', true);
+    texto(ctx, 'Comprobante', xCom, y + 17, fuenteDe(F, 11, true), lilaOsc, 'left', true);
+  }
+  y += 24;
+  EJEMPLO_TARJETA.semanas.forEach(function (s, i) {
+    if (dibujar) {
+      if (i % 2 === 0) { ctx.fillStyle = 'rgba(247,245,252,0.55)'; ctx.fillRect(M, y, cw, 20); }
+      ctx.strokeStyle = '#e3ddf2';
+      ctx.strokeRect(M + 0.5, y + 0.5, cw - 1, 20);
+      texto(ctx, 'semana ' + s.semana, xSem + 4, y + 14, fuenteDe(F, 11, false), tinta, 'left', true);
+      texto(ctx, fechaMX(s.fechaLimite), xLim, y + 14, fuenteDe(F, 11, false), tinta, 'left', true);
+      texto(ctx, money(s.monto), xMon, y + 14, fuenteDe(F, 11, false), tinta, 'left', true);
+      texto(ctx, 'Pendiente', xEst, y + 14, fuenteDe(F, 11, false), tinta, 'left', true);
+      texto(ctx, '—', xPag, y + 14, fuenteDe(F, 11, false), tinta, 'left', true);
+      texto(ctx, '—', xCom, y + 14, fuenteDe(F, 11, false), tinta, 'left', true);
+    }
+    y += 20;
+  });
+  y += 8;
+  parrafo('Total del ejemplo: ' + money(EJEMPLO_TARJETA.total) + ' · 9 pagos de ' + money(EJEMPLO_TARJETA.pagoSemanal) + ' + último de ' + money(EJEMPLO_TARJETA.ultimoPago), 12.5, true);
+  parrafo('Reporta tu pago vía WhatsApp: 56 1158 6976 · Métodos de pago: Transferencia, Efectivo · Envía tu comprobante con: nombre completo, número de tanda, semana de pago.', 12);
+  // Firma de aceptación (si se pudo cargar la imagen).
+  seccion('Aceptación de términos');
+  var decLin = lineas('“' + DECLARACION_ACEPTACION + '”', 12.5, false);
+  decLin.forEach(function (ln) {
+    if (dibujar) texto(ctx, ln, M, y, fuenteDe(F, 12.5, false), tinta, 'left', true);
+    y += 12.5 + 5;
+  });
+  y += 4;
+  if (firmaImg) {
+    var fW = 220, fH = Math.round(fW * (firmaImg.naturalHeight || firmaImg.height || 220) / (firmaImg.naturalWidth || firmaImg.width || 600));
+    if (fH > 90) { fH = 90; fW = Math.round(fH * (firmaImg.naturalWidth || firmaImg.width || 600) / (firmaImg.naturalHeight || firmaImg.height || 220)); }
+    if (dibujar) { try { ctx.drawImage(firmaImg, M, y, fW, fH); } catch (e) {} }
+    y += fH + 6;
+  } else {
+    parrafo('Firmado digitalmente' + (c.creado ? ' el ' + fechaMX(c.creado) : '') + '.', 12.5, false, '#6b6478');
+  }
+  parrafo((c.nombre || '') + (c.creado ? ' · Firmado el ' + fechaMX(c.creado) : ''), 12.5, true);
+  // Contacto final.
+  y += 4;
+  var pieLin = lineas(NEGOCIO.nombre + ' · ' + NEGOCIO.programa + ' — Renueva tu visión de forma accesible y organizada', 11, false);
+  pieLin.forEach(function (ln) {
+    if (dibujar) texto(ctx, ln, W / 2, y, fuenteDe(F, 11, false), '#6b6478', 'center', true);
+    y += 11 + 4;
+  });
+  parrafo('Tel. ' + NEGOCIO.telefonos + ' · ' + NEGOCIO.correo + ' · ' + NEGOCIO.instagram, 11, false, '#6b6478', 2);
+  parrafo(NEGOCIO.direccion + ' · Respaldado por Ópticas Luna', 11, false, '#6b6478', 2);
+  y += M;
+  return { ancho: Math.round(W * k), alto: Math.round(y * k) };
+}
+function generarImagenCarta(doc, escala) {
+  var k = escala || 1.5;
+  var firmaUrl = (doc.cliente && doc.cliente.firmaTerminosUrl) || '';
+  return Promise.all([
+    cargarImagen('logo.png').catch(function () { return null; }),
+    cargarImagenSegura(firmaUrl)
+  ]).then(function (imgs) {
+    var logo = imgs[0], firmaImg = imgs[1];
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas no disponible.');
+    var dims;
+    try { dims = dibujarCarta(ctx, doc, logo, firmaImg, k, false); } catch (e) { throw new Error('al medir la carta: ' + e.message); }
+    if (!dims || !dims.ancho || !dims.alto) throw new Error('No se pudo medir la carta.');
+    canvas.width = dims.ancho;
+    canvas.height = dims.alto;
+    ctx = canvas.getContext('2d');
+    ctx.scale(k, k);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, dims.ancho / k, dims.alto / k);
+    dibujarCarta(ctx, doc, logo, firmaImg, k, true);
+    return new Promise(function (resolve, reject) {
+      canvas.toBlob(function (blob) {
+        if (!blob) reject(new Error('No se pudo exportar el PNG.'));
+        else resolve(blob);
+      }, 'image/png');
+    });
+  });
+}
 function generarImagenTarjeta(doc, escala) {
   var k = escala || 2;
-  return cargarImagen('logo-yael-contorno-blanco.png').catch(function () { return null; }).then(function (logo) {
+  // v2.0.4: también se carga el logo circular de Yael para la marca de agua.
+  return Promise.all([
+    cargarImagen('logo-yael-contorno-blanco.png').catch(function () { return null; }),
+    cargarImagen('logo-yael-circular.png').catch(function () { return null; })
+  ]).then(function (logos) {
+    var logo = logos[0], wmImg = logos[1];
     var canvas = document.createElement('canvas');
     var ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas no disponible.');
@@ -1770,7 +2419,7 @@ function generarImagenTarjeta(doc, escala) {
     ctx.scale(k, k);
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, dims.ancho / k, dims.alto / k);
-    dibujarTarjeta(ctx, doc, logo, k, true);
+    dibujarTarjeta(ctx, doc, logo, k, true, wmImg, dims.alto / k);
     return new Promise(function (resolve, reject) {
       canvas.toBlob(function (blob) {
         if (!blob) reject(new Error('No se pudo exportar el PNG.'));
@@ -1924,52 +2573,246 @@ function generarImagenOrden(doc, escala) {
     });
   });
 }
-function compartirDoc() {
-  if (!state.currentDoc || (state.currentDoc.kind !== 'tarjeta' && state.currentDoc.kind !== 'orden')) return;
-  var d = state.currentTanda;
-  if (!d) return;
-  var esOrden = state.currentDoc.kind === 'orden';
-  var nombre = (d.cliente && d.cliente.nombre) || '';
-  var textoMsg = esOrden ? mensajeOrden(d) : mensajeTarjeta(d);
-  var folio = String(d.tanda ? d.tanda.id : (d.id || (esOrden ? 'orden' : 'tarjeta'))).replace(/[^A-Za-z0-9]/g, '');
-  var nombreArchivo = (esOrden ? 'orden-' : 'tarjeta-') + folio + '.png';
+/* ---------------- Imagen de la hoja de evidencia (canvas) ----------
+   v2.0.4 (Detalle 4): la hoja de evidencia también se comparte como
+   PNG. Las 4 imágenes se cargan con cargarImagenSegura; si alguna no
+   se puede pintar (Drive sin CORS), queda un recuadro con su etiqueta
+   ("Sin imagen registrada — ver en el expediente"). Las cajas tienen
+   alto fijo, así que la medición y el dibujo avanzan igual. */
+function dibujarImagenAjustada(ctx, img, x, y, boxW, boxH) {
+  var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  if (!iw || !ih) return;
+  var s = Math.min(boxW / iw, boxH / ih);
+  var w = Math.max(1, Math.round(iw * s)), h = Math.max(1, Math.round(ih * s));
+  ctx.drawImage(img, x + Math.round((boxW - w) / 2), y + Math.round((boxH - h) / 2), w, h);
+}
+function dibujarEvidencia(ctx, doc, logoYael, imgs, escala, dibujar) {
+  var F = 'system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif';
+  var tinta = '#241f31';
+  var lila = '#9076DA', lilaOsc = '#6f55b8', turq = '#40C5D2';
+  var W = 528, M = 20, cw = W - 2 * M;
+  var k = escala || 1;
+  var y = M;
+  var c = doc.cliente || {}, t = doc;
+  function lineas(txt, tam, negrita, ancho) {
+    ctx.font = fuenteDe(F, tam, negrita);
+    return envolverTexto(ctx, txt, ancho || cw);
+  }
+  function parrafo(txt, tam, negrita, color, gap) {
+    tam = tam || 13; color = color || tinta;
+    var ls = lineas(txt, tam, negrita);
+    ls.forEach(function (ln) {
+      if (dibujar) texto(ctx, ln, M, y, fuenteDe(F, tam, negrita), color, 'left', true);
+      y += tam + 5;
+    });
+    y += (gap === undefined ? 6 : gap);
+  }
+  function seccion(txt) {
+    y += 6;
+    if (dibujar) texto(ctx, txt, M, y, fuenteDe(F, 14, true), lilaOsc, 'left', true);
+    y += 14 + 8;
+  }
+  function cajaImagen(img, etiqueta, x, boxW, boxH) {
+    if (dibujar) {
+      ctx.strokeStyle = '#cfc6e6';
+      ctx.setLineDash([5, 4]);
+      ctx.strokeRect(x + 0.5, y + 0.5, boxW - 1, boxH - 1);
+      ctx.setLineDash([]);
+      if (img) {
+        try { dibujarImagenAjustada(ctx, img, x + 4, y + 4, boxW - 8, boxH - 8); } catch (e) {}
+      } else {
+        texto(ctx, 'Sin imagen registrada', x + boxW / 2, y + boxH / 2, fuenteDe(F, 12, false), '#6b6478', 'center', true);
+      }
+    }
+    y += boxH;
+  }
+  // Encabezado: logo Yael + título.
+  var logoH = 40, logoW = 0;
+  if (logoYael) {
+    logoW = Math.round(logoH * (logoYael.naturalWidth || logoYael.width || 300) / (logoYael.naturalHeight || logoYael.height || 100));
+  }
+  if (dibujar) {
+    if (logoYael) { try { ctx.drawImage(logoYael, M, y, logoW, logoH); } catch (e) {} }
+    texto(ctx, 'HOJA DE EVIDENCIA', M + logoW + 14, y + 26, fuenteDe(F, 17, true), lilaOsc, 'left', true);
+    ctx.strokeStyle = turq; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(M, y + 48); ctx.lineTo(W - M, y + 48); ctx.stroke();
+  }
+  y += 48 + 10;
+  parrafo('Expediente de evidencia del programa Tanda Visual. Las imágenes se guardan en la carpeta privada de Drive del negocio; este formato es para mostrarle al cliente en caso de conflicto.', 12, false, '#6b6478');
+  parrafo('Cliente: ' + (c.nombre || '') + '   ·   Nº de cliente: ' + (c.id || '') + '   ·   Teléfono: ' + (c.telefono || '—'), 13, true);
+  parrafo('Tanda: ' + (t.id || '') + '   ·   Nº de tanda: ' + (t.numero || '') + '   ·   Inicio: ' + fechaMX(t.fechaInicio) + '   ·   Entrega estimada: ' + fechaMX(t.entregaEstimada) + (t.fechaEntrega ? '   ·   Entregada: ' + fechaMX(t.fechaEntrega) : ''), 13);
+  parrafo('Total: ' + money(t.total) + '   ·   Color actual: ' + (t.color || 'Verde'), 13);
+  // Identidad: INE y rostro lado a lado.
+  seccion('Identidad');
+  var fotoW = Math.floor((cw - 12) / 2), fotoH = 150;
+  if (dibujar) {
+    texto(ctx, 'INE (frente)', M, y, fuenteDe(F, 13, true), tinta, 'left', true);
+    texto(ctx, 'Rostro', M + fotoW + 12, y, fuenteDe(F, 13, true), tinta, 'left', true);
+  }
+  y += 13 + 8;
+  var yFotos = y;
+  cajaImagen(imgs.ine, 'INE (frente)', M, fotoW, fotoH);
+  var yDespuesIne = y;
+  y = yFotos;
+  cajaImagen(imgs.rostro, 'Rostro', M + fotoW + 12, fotoW, fotoH);
+  y = Math.max(y, yDespuesIne);
+  y += 6;
+  parrafo('Solo el frente del INE, por seguridad del cliente. El reverso se muestra en físico para cotejar la firma de manera visual (no se fotografía ni se guarda).', 11, false, '#6b6478');
+  // Firma de aceptación.
+  seccion('Firma de aceptación de términos');
+  var decLin = lineas('“' + DECLARACION_ACEPTACION + '”', 12.5, false);
+  decLin.forEach(function (ln) {
+    if (dibujar) texto(ctx, ln, M, y, fuenteDe(F, 12.5, false), tinta, 'left', true);
+    y += 12.5 + 5;
+  });
+  y += 4;
+  cajaImagen(imgs.firmaTerminos, 'Firma de aceptación de términos', M, 300, 90);
+  y += 6;
+  parrafo((c.nombre || '') + (c.creado ? ' · Firmado el ' + fechaMX(c.creado) : ''), 12.5, true);
+  // Firma de entrega.
+  seccion('Firma de entrega — recepción de los lentes');
+  var dec2Lin = lineas('“' + DECLARACION_ENTREGA + '”', 12.5, false);
+  dec2Lin.forEach(function (ln) {
+    if (dibujar) texto(ctx, ln, M, y, fuenteDe(F, 12.5, false), tinta, 'left', true);
+    y += 12.5 + 5;
+  });
+  y += 4;
+  cajaImagen(imgs.firmaEntrega, 'Firma de entrega', M, 300, 90);
+  y += 6;
+  parrafo((c.nombre || '') + (t.fechaEntrega ? ' · Firmado el ' + fechaMX(t.fechaEntrega) : ' · Aún no entregado'), 12.5, true);
+  // Contacto final.
+  y += 8;
+  parrafo(NEGOCIO.nombre + ' · ' + NEGOCIO.programa, 11, true, lilaOsc, 2);
+  parrafo('Tel. ' + NEGOCIO.telefonos + ' · ' + NEGOCIO.correo + ' · ' + NEGOCIO.instagram, 11, false, '#6b6478', 2);
+  parrafo(NEGOCIO.direccion + ' · Respaldado por Ópticas Luna', 11, false, '#6b6478', 2);
+  y += M;
+  return { ancho: Math.round(W * k), alto: Math.round(y * k) };
+}
+function generarImagenEvidencia(doc, escala) {
+  var k = escala || 1.5;
+  var c = doc.cliente || {};
+  return Promise.all([
+    cargarImagen('logo.png').catch(function () { return null; }),
+    cargarImagenSegura(c.ineFrenteUrl || ''),
+    cargarImagenSegura(c.rostroUrl || ''),
+    cargarImagenSegura(c.firmaTerminosUrl || ''),
+    cargarImagenSegura(doc.firmaEntregaUrl || '')
+  ]).then(function (res) {
+    var logo = res[0];
+    var imgs = { ine: res[1], rostro: res[2], firmaTerminos: res[3], firmaEntrega: res[4] };
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas no disponible.');
+    var dims;
+    try { dims = dibujarEvidencia(ctx, doc, logo, imgs, k, false); } catch (e) { throw new Error('al medir la evidencia: ' + e.message); }
+    if (!dims || !dims.ancho || !dims.alto) throw new Error('No se pudo medir la evidencia.');
+    canvas.width = dims.ancho;
+    canvas.height = dims.alto;
+    ctx = canvas.getContext('2d');
+    ctx.scale(k, k);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, dims.ancho / k, dims.alto / k);
+    dibujarEvidencia(ctx, doc, logo, imgs, k, true);
+    return new Promise(function (resolve, reject) {
+      canvas.toBlob(function (blob) {
+        if (!blob) reject(new Error('No se pudo exportar el PNG.'));
+        else resolve(blob);
+      }, 'image/png');
+    });
+  });
+}
+/* ---------------- Compartir por WhatsApp (v2.0.4, Detalle 2) ----------
+   La imagen ya está PRE-GENERADA (prepararImagenDoc, al abrir la
+   vista), así que compartirDoc es SÍNCRONO: construye el File y llama
+   a navigator.share dentro del toque, sin awaits de por medio. Antes
+   la imagen se generaba DESPUÉS del toque y el gesto expiraba: por
+   eso fallaba el primer intento ("Must be handling a user gesture")
+   y el segundo ya funcionaba (logo en caché). El respaldo de
+   solo-texto (wa.me) se mantiene, pero ya no debería necesitarse. */
+function prepararImagenDoc() {
   var btn = $('btnDocCompartir');
+  var kind = state.currentDoc && state.currentDoc.kind;
+  var d = state.currentTanda;
+  state.docImg = { key: null, blob: null, listo: false };
+  if (!kind || !d || !btn) return;
   btn.disabled = true;
   btn.textContent = 'Generando imagen…';
-  var generar = esOrden ? generarImagenOrden : generarImagenTarjeta;
-  var intento = generar(d, 2).catch(function () { return generar(d, 1); });
-  intento.then(function (blob) {
-    var archivo = new File([blob], nombreArchivo, { type: 'image/png' });
+  var key = kind + ':' + (d.tanda ? d.tanda.id : (d.id || ''));
+  var generar = null, escala = 2, escalaBaja = 1;
+  if (kind === 'tarjeta') { generar = generarImagenTarjeta; escala = 2; }
+  else if (kind === 'orden') { generar = generarImagenOrden; escala = 2; }
+  else if (kind === 'reglamento') { generar = generarImagenCarta; escala = 1.5; }
+  else if (kind === 'evidencia') { generar = generarImagenEvidencia; escala = 1.5; }
+  if (!generar) { btn.disabled = false; btn.textContent = 'Compartir por WhatsApp'; return; }
+  generar(d, escala).catch(function () { return generar(d, escalaBaja); }).then(function (blob) {
+    // Si el usuario ya abrió otro documento, no sobreescribir su imagen.
+    if (!state.currentDoc || state.currentDoc.kind !== kind) return;
+    state.docImg = { key: key, blob: blob, listo: true };
+    btn.disabled = false;
+    btn.textContent = 'Compartir por WhatsApp';
+  }).catch(function (e) {
+    // La imagen no se pudo generar: el botón queda habilitado y el
+    // compartir cae al respaldo de solo-texto.
+    if (!state.currentDoc || state.currentDoc.kind !== kind) return;
+    btn.disabled = false;
+    btn.textContent = 'Compartir por WhatsApp';
+    showError('No se pudo generar la imagen del documento: ' + e.message + ' Se compartirá solo el texto.');
+  });
+}
+function mensajeDoc(kind, d) {
+  if (kind === 'orden') return mensajeOrden(d);
+  if (kind === 'evidencia') {
+    var nombre = (d.cliente && d.cliente.nombre) || '';
+    return 'Hola ' + nombre + ', te compartimos tu hoja de evidencia de Tanda Visual (tanda ' + (d.id || '') + ', Nº ' + (d.numero || '') + ').';
+  }
+  if (kind === 'reglamento') {
+    var nombre2 = (d.cliente && d.cliente.nombre) || '';
+    return 'Hola ' + nombre2 + ', te compartimos tu carta de bienvenida de Tanda Visual con el reglamento y los términos y condiciones. Léela con calma: ahí vienen tus fechas de pago y tu entrega.';
+  }
+  return mensajeTarjeta(d);
+}
+function compartirTextoDoc(textoMsg, d) {
+  var tel = (d.cliente && d.cliente.telefono) || '';
+  if (navigator.share) {
+    navigator.share({ title: 'Tanda Visual', text: textoMsg }).catch(function () {
+      window.open(waLink(tel, textoMsg), '_blank');
+    });
+  } else {
+    window.open(waLink(tel, textoMsg), '_blank');
+  }
+}
+function compartirDoc() {
+  var kind = state.currentDoc && state.currentDoc.kind;
+  var d = state.currentTanda;
+  if (!kind || !d) return;
+  var textoMsg = mensajeDoc(kind, d);
+  var folio = String(d.tanda ? d.tanda.id : (d.id || kind)).replace(/[^A-Za-z0-9]/g, '');
+  var prefijo = kind === 'orden' ? 'orden-' : kind === 'tarjeta' ? 'tarjeta-' : kind === 'evidencia' ? 'evidencia-' : 'carta-';
+  var nombreArchivo = prefijo + folio + '.png';
+  var img = state.docImg;
+  if (img && img.listo && img.blob) {
+    var archivo = new File([img.blob], nombreArchivo, { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
-      return navigator.share({ files: [archivo], title: 'Tanda Visual — ' + (esOrden ? 'Orden de trabajo ' : 'Tarjeta ') + folio, text: textoMsg }).then(function () {
-        return 'compartido';
-      }).catch(function (e) {
-        if (e && e.name === 'AbortError') return 'cancelado';
-        throw e;
+      // Llamada SÍNCRONA dentro del toque (la imagen ya está lista).
+      navigator.share({ files: [archivo], title: 'Tanda Visual — ' + nombreArchivo, text: textoMsg }).catch(function (e) {
+        if (e && e.name === 'AbortError') return;
+        showError('No se pudo compartir la imagen. Se comparte el texto.');
+        compartirTextoDoc(textoMsg, d);
       });
+      return;
     }
-    // Sin menú para compartir: descargar el PNG y avisar.
-    var url = URL.createObjectURL(blob);
+    // Sin menú para compartir archivos: descargar el PNG.
+    var url = URL.createObjectURL(img.blob);
     var a = document.createElement('a');
     a.href = url; a.download = nombreArchivo;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
     showError('No se pudo abrir el menú para compartir: se descargó "' + nombreArchivo + '" — envíalo desde Descargas por WhatsApp.');
-    return 'descargado';
-  }).catch(function (e) {
-    showError('No se pudo compartir la imagen: ' + e.message + ' Se comparte el texto.');
-    var tel = (d.cliente && d.cliente.telefono) || '';
-    if (navigator.share) {
-      navigator.share({ title: 'Tanda Visual', text: textoMsg }).catch(function () {
-        window.open(waLink(tel, textoMsg), '_blank');
-      });
-    } else {
-      window.open(waLink(tel, textoMsg), '_blank');
-    }
-  }).finally(function () {
-    btn.disabled = false;
-    btn.textContent = 'Compartir por WhatsApp';
-  });
+    return;
+  }
+  // Sin imagen lista (no debería pasar: el botón se deshabilita hasta
+  // que esté): respaldo de solo-texto, dentro del gesto.
+  compartirTextoDoc(textoMsg, d);
 }
 function cablearDoc() {
   $('btnDocVolver').addEventListener('click', function () {

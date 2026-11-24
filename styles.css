@@ -1,4 +1,4 @@
-/* TANDA VISUAL v2.0.2 — Boutique de Lentes Yael protagoniza.
+/* TANDA VISUAL v2.0.4 — Boutique de Lentes Yael protagoniza.
    Paleta Yael (manual de marca): Turquesa #40C5D2 · Lila #9076DA ·
    Negro #000000 · Blanco #FFFFFF. El logo de Tanda Visual (lentes +
    calendario + $) es solo la marca de la app: splash e icono.
@@ -391,7 +391,7 @@ html,body,.doc,.doc-comprobante .banner-top,.doc-watermark,.orden-label-wm,.doc-
      el contenido cupiera. Con padding-bottom:0 el PDF sale en 1 hoja
      (verificado en Chromium real: 1 página, contenido completo). */
   body{background:#fff;padding-bottom:0}
-  .app-header,.app-footer,.doc-toolbar,.wizard-nav,.btn,.bottom-nav,#splashStart{display:none!important}
+  .app-header,.app-footer,.doc-toolbar,.wizard-nav,.btn,.bottom-nav,#splashStart,.banner,#lightbox{display:none!important}
   main{max-width:none;padding:0}
   .view{display:none!important}
   #view-doc{display:block!important}
@@ -489,9 +489,94 @@ html,body,.doc,.doc-comprobante .banner-top,.doc-watermark,.orden-label-wm,.doc-
 @media print{
   /* Reglamento y tarjeta: carta, como el papel. El fix de v2.3.13 de la
      App 1 (body padding-bottom:0) ya está arriba y aplica aquí también. */
-  .doc-reglamento,.doc-tarjeta{max-width:none;width:100%}
+  .doc-reglamento,.doc-tarjeta,.doc-evidencia{max-width:none;width:100%}
   .doc-reglamento{font-size:.92rem}
   .doc-reglamento h3{break-after:avoid}
   .doc-reglamento li{break-inside:avoid}
   .doc-tarjeta table{font-size:.85rem}
+  .carta-onda{height:26px}
+  /* La carta es larga (10 filas de ejemplo + firma): se compactan las
+     celdas y la onda inferior en print para que el PDF quede en 4
+     páginas como el papel, sin una 5ª página casi vacía. */
+  .doc-carta table td,.doc-carta table th{padding:.28rem .45rem}
+  .carta-onda-bottom{margin:.4rem -1rem -1rem}
+  .carta-head img{height:52px}
+  .carta-titulo{break-after:avoid}
+  .doc-carta h4{break-after:avoid}
+  .doc-carta .carta-firma-aceptacion,.doc-carta .carta-ejemplo-box,.doc-evidencia .evid-item{break-inside:avoid;page-break-inside:avoid}
 }
+
+/* ---------- v2.0.4: Carta de bienvenida, diseño del papel ----------
+   Ondas turquesa→lila, encabezado Yael + TANDA VISUAL, tira de
+   contacto, título con degradado y subrayado, checklist con ✓,
+   firma en cursiva, pie "Programa seguro…" y onda inferior. */
+.doc-carta{position:relative;overflow:hidden}
+.carta-onda{height:44px;background:linear-gradient(90deg,#40C5D2,#9076DA);border-radius:0 0 50% 50%/0 0 100% 100%;margin:-1rem -1rem 0}
+.carta-onda-bottom{border-radius:50% 50% 0 0/100% 100% 0 0;margin:1rem -1rem -1rem}
+.carta-head{display:flex;gap:.8rem;align-items:center;margin-top:.6rem}
+.carta-head img{height:56px;width:auto}
+.carta-head-txt{flex:1}
+@media (max-width:600px){
+  /* En el celular el logo + el texto no caben lado a lado: el texto
+     baja debajo del logo para que no se parta en 6 líneas. */
+  .carta-head{flex-wrap:wrap}
+  .carta-head-txt{flex:1 1 100%}
+}
+.carta-programa{font-size:1.25rem;font-weight:800;letter-spacing:.02em}
+.carta-programa-t{color:#2b9aa8}
+.carta-programa-v{color:#9076DA}
+.carta-programa-sub{font-size:.9rem;color:var(--ink);font-weight:600}
+.carta-contacto{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;border-top:2px solid #40C5D2;border-bottom:1px solid var(--line);padding:.5rem 0;margin:.6rem 0;font-size:.78rem;color:var(--muted);text-align:center}
+.carta-contacto span + span{border-left:1px solid var(--line);padding-left:.4rem}
+@media (max-width:600px){
+  .carta-contacto{grid-template-columns:repeat(2,1fr)}
+  .carta-contacto span:nth-child(3){border-left:0;padding-left:0}
+}
+.carta-titulo{text-align:center;font-size:1.3rem;font-weight:800;letter-spacing:.04em;background:linear-gradient(90deg,#40C5D2,#9076DA);-webkit-background-clip:text;background-clip:text;color:transparent;margin:1rem 0 .2rem}
+.carta-titulo::after{content:'';display:block;width:56px;height:3px;border-radius:3px;background:#40C5D2;margin:.4rem auto 0}
+.doc-carta h4{color:var(--purple-dark);margin:.9rem 0 .3rem}
+@media screen{
+  /* Las tablas anchas (6 columnas) en el celular se desplazan en
+     horizontal sin romper el documento. En print NO aplica: en el
+     PDF (carta) caben completas. */
+  .doc-carta table,.doc-tarjeta table{display:block;overflow-x:auto}
+}
+.carta-datos{background:var(--purple-light);border-radius:10px;padding:.7rem .9rem;margin:.6rem 0}
+.carta-checklist{list-style:none;padding:0;margin:.6rem 0}
+.carta-checklist li{padding:.3rem 0 .3rem 1.8rem;position:relative}
+.carta-checklist li::before{content:'✓';position:absolute;left:0;top:.25rem;width:1.3rem;height:1.3rem;border-radius:50%;background:#e8f6f8;color:#2b9aa8;font-weight:800;text-align:center;line-height:1.3rem}
+.carta-firma-nombre{font-family:"Segoe Script","Brush Script MT",cursive;font-size:1.5rem;color:#9076DA;margin:.2rem 0 .6rem}
+.carta-pie{text-align:center;border-top:1px solid var(--line);padding-top:.6rem;margin-top:.6rem}
+.carta-pie-items{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;font-size:.85rem;color:var(--muted);margin-top:.3rem}
+.carta-ejemplo-box{background:#e8f6f8;border-radius:9px;padding:.6rem .8rem;margin:.6rem 0}
+.carta-declaracion{font-style:italic;background:var(--purple-light);border-left:4px solid var(--purple);border-radius:0 9px 9px 0;padding:.6rem .8rem;margin:.6rem 0}
+.carta-firma-aceptacion{margin-top:1rem;border-top:2px solid var(--purple);padding-top:.6rem}
+.carta-firma-aceptacion img{max-width:280px;width:100%;height:auto;background:#fff;border:1px solid var(--line);border-radius:8px}
+/* Vista previa de la carta en el paso 2 del wizard: el documento
+   completo dentro de la tarjeta, con su propio scroll si hace falta. */
+.carta-preview{border:1px solid var(--line);border-radius:12px;max-height:60vh;overflow-y:auto;margin:.6rem 0}
+.carta-preview .doc-carta{border:0;border-radius:0;margin:0;box-shadow:none}
+/* ---------- v2.0.4: marca de agua en la tarjeta de pagos ----------
+   Yael circular al centro, EN GRANDE, alfa .10, detrás del contenido.
+   Los fondos de la tabla y del progreso son semitransparentes para
+   que la marca se vea a través de ellos (mismo patrón que la orden de
+   la App 1, v2.3.3). */
+.doc-tarjeta{position:relative;overflow:hidden}
+.doc-tarjeta>*:not(.doc-watermark){position:relative;z-index:1}
+.doc-tarjeta .doc-watermark{background-size:min(520px,92%) auto}
+.doc-tarjeta th{background:rgba(239,233,251,.55)}
+.doc-tarjeta td{background:transparent}
+.doc-tarjeta .tarjeta-progreso{background:rgba(239,233,251,.55)}
+/* ---------- v2.0.4: expediente de evidencia (Detalle 4) ---------- */
+.evid-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin:.6rem 0}
+@media (max-width:600px){.evid-grid{grid-template-columns:1fr}}
+.evid-item h4{margin:.2rem 0 .4rem}
+.evid-img{width:100%;max-height:260px;object-fit:contain;background:#f7f5fc;border:1px solid var(--line);border-radius:10px;cursor:zoom-in}
+.evid-sin-img{border:1.5px dashed #cfc6e6;border-radius:10px;padding:1.2rem .8rem;text-align:center;color:var(--muted);font-size:.88rem;background:#f7f5fc}
+.doc-evidencia h3{color:var(--purple-dark);margin-top:1rem}
+.doc-evidencia .evid-img{max-height:300px}
+/* Lightbox: toca una miniatura y se ve en grande; toca para cerrar. */
+#lightbox{position:fixed;inset:0;z-index:200;background:rgba(10,15,31,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8rem;padding:1rem;cursor:pointer}
+#lightbox[hidden]{display:none}
+#lightboxImg{max-width:100%;max-height:85vh;object-fit:contain;border-radius:8px}
+.lightbox-cerrar{color:#fff;font-weight:700;font-size:.9rem}

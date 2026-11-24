@@ -85,7 +85,7 @@
   </div>
   <div class="home-utils">
     <button class="btn btn-ghost" id="btnConfig" type="button">Configuración</button>
-    <span class="badge" id="homeVersion">Tanda Visual v2.0.2</span>
+    <span class="badge" id="homeVersion">Tanda Visual v2.0.4</span>
   </div>
 </section>
 
@@ -94,10 +94,11 @@
   <h2>Nueva tanda</h2>
   <ol class="steps" id="wizardSteps">
     <li data-paso="1" class="active">1 · Cliente</li>
-    <li data-paso="2">2 · Fotos y firma</li>
-    <li data-paso="3">3 · Optometría</li>
-    <li data-paso="4">4 · Producto y tanda</li>
-    <li data-paso="5">5 · Revisar</li>
+    <li data-paso="2">2 · Carta y firma</li>
+    <li data-paso="3">3 · Fotos</li>
+    <li data-paso="4">4 · Optometría</li>
+    <li data-paso="5">5 · Producto y tanda</li>
+    <li data-paso="6">6 · Revisar</li>
   </ol>
   <div id="wizardError" class="error" hidden></div>
 
@@ -131,10 +132,28 @@
     </div>
   </div>
 
-  <!-- Paso 2: Fotos y firma -->
+  <!-- Paso 2: Carta y firma (v2.0.4, Detalle 6: el cliente LEE la carta
+       ANTES de firmar; la firma va debajo de la declaración) -->
   <div class="wizard-paso" data-paso="2" hidden>
     <div class="card">
-      <h3>Fotos y firma</h3>
+      <h3>Carta de bienvenida — léela antes de firmar</h3>
+      <p class="hint">El cliente lee la carta de bienvenida con el reglamento y los términos y condiciones ANTES de firmar. La ignorancia de las normas no exime de cumplirlas: al firmar, acepta lo que acaba de leer.</p>
+      <div id="wCartaPreview" class="carta-preview"></div>
+      <h3>Firma digital — aceptación de términos *</h3>
+      <p class="hint">El cliente firma aceptando el reglamento y los términos. No es para litigio: es prueba de aceptación — si dice que no sabía, se le muestra su firma.</p>
+      <p class="carta-declaracion">“He leído las condiciones del programa y acepto y acataré las mismas para la participación de dicho programa.”</p>
+      <canvas id="wFirmaTerminos" class="firma-pad" width="600" height="220"></canvas>
+      <div class="wizard-nav">
+        <button class="btn btn-secondary" id="wFirmaLimpiar" type="button">Limpiar firma</button>
+      </div>
+      <label class="check"><input id="wLeyendaReverso" type="checkbox"> El cliente mostró el reverso de su INE en físico y se cotejó su firma de manera visual (el reverso no se fotografía ni se guarda).</label>
+    </div>
+  </div>
+
+  <!-- Paso 3: Fotos (INE frente + rostro) -->
+  <div class="wizard-paso" data-paso="3" hidden>
+    <div class="card">
+      <h3>Fotos</h3>
       <p class="hint">La foto del INE es SOLO POR EL FRENTE, por seguridad del cliente. El reverso NO se fotografía: el cliente lo muestra en físico para cotejar la firma de manera visual.</p>
       <label>Foto del INE (frente) *
         <input id="wIneFrente" type="file" accept="image/*" capture="environment">
@@ -144,18 +163,11 @@
         <input id="wRostro" type="file" accept="image/*" capture="user">
       </label>
       <div id="wRostroPreview" class="foto-preview"></div>
-      <h3>Firma digital — aceptación de términos *</h3>
-      <p class="hint">El cliente firma aceptando el reglamento y los términos. No es para litigio: es prueba de aceptación — si dice que no sabía, se le muestra su firma.</p>
-      <canvas id="wFirmaTerminos" class="firma-pad" width="600" height="220"></canvas>
-      <div class="wizard-nav">
-        <button class="btn btn-secondary" id="wFirmaLimpiar" type="button">Limpiar firma</button>
-      </div>
-      <label class="check"><input id="wLeyendaReverso" type="checkbox"> El cliente mostró el reverso de su INE en físico y se cotejó su firma de manera visual (el reverso no se fotografía ni se guarda).</label>
     </div>
   </div>
 
-  <!-- Paso 3: Optometría -->
-  <div class="wizard-paso" data-paso="3" hidden>
+  <!-- Paso 4: Optometría -->
+  <div class="wizard-paso" data-paso="4" hidden>
     <div class="card">
       <h3>Optometría</h3>
       <p class="hint">Apartado propio de Tanda Visual, igual que en la App 1: misma graduación, mismos rangos, misma agudeza visual y lensometría.</p>
@@ -231,8 +243,8 @@
     </div>
   </div>
 
-  <!-- Paso 4: Producto y tanda -->
-  <div class="wizard-paso" data-paso="4" hidden>
+  <!-- Paso 5: Producto y tanda -->
+  <div class="wizard-paso" data-paso="5" hidden>
     <div class="card">
       <h3>El producto — armazón y lente</h3>
       <p class="hint">El total es el precio de los lentes (armazón + lente) dividido entre 10 pagos semanales. Se elige el armazón y el lente con sus precios definidos del catálogo; la app muestra el total definido y tú tecleas el total final (precio de venta).</p>
@@ -290,12 +302,12 @@
     </div>
   </div>
 
-  <!-- Paso 5: Revisar -->
-  <div class="wizard-paso" data-paso="5" hidden>
+  <!-- Paso 6: Revisar -->
+  <div class="wizard-paso" data-paso="6" hidden>
     <div class="card">
       <h3>Revisar y crear la tanda</h3>
       <div id="wResumen"></div>
-      <p class="hint">Al crear la tanda se genera el paquete para el cliente: carta de bienvenida con su nombre, reglamento y términos, y la tarjeta de EJEMPLO (sin validez como comprobante). La tarjeta REAL se genera a partir del primer pago.</p>
+      <p class="hint">Al crear la tanda se genera el paquete para el cliente: carta de bienvenida con su nombre y su firma de aceptación, reglamento y términos, y la tarjeta de EJEMPLO (sin validez como comprobante, con datos ficticios). La tarjeta REAL se genera a partir del primer pago.</p>
       <div id="wCrearError" class="error" hidden></div>
     </div>
   </div>
@@ -399,6 +411,30 @@
     </label>
     <div id="entregaInfo"></div>
     <p class="hint">Entrega hasta el viernes de la semana de entrega, de 3:00 a 9:00 pm. Al recoger, el cliente hace su pago de la semana. Si tiene pagos vencidos, la entrega se recorre hasta ponerse al corriente.</p>
+    <div id="entregaOptometriaBox" hidden>
+      <h3>Capturar optometría</h3>
+      <p class="hint">Sin graduación no se pueden elaborar los lentes. Captura la graduación (refracción subjetiva) para desbloquear la entrega.</p>
+      <h4>O.D.</h4>
+      <div class="rx-row">
+        <label class="rx-field"><span>Esf</span><select id="entOptEsfOD" aria-label="Graduación esfera O.D."></select></label>
+        <label class="rx-field"><span>Cil</span><select id="entOptCilOD" aria-label="Graduación cilindro O.D."></select></label>
+        <label class="rx-field"><span>Eje</span><select id="entOptEjeOD" aria-label="Graduación eje O.D."></select></label>
+      </div>
+      <h4>O.I.</h4>
+      <div class="rx-row">
+        <label class="rx-field"><span>Esf</span><select id="entOptEsfOI" aria-label="Graduación esfera O.I."></select></label>
+        <label class="rx-field"><span>Cil</span><select id="entOptCilOI" aria-label="Graduación cilindro O.I."></select></label>
+        <label class="rx-field"><span>Eje</span><select id="entOptEjeOI" aria-label="Graduación eje O.I."></select></label>
+      </div>
+      <div class="grid2">
+        <label>Add <select id="entOptAdd"></select></label>
+        <label>DNP <input id="entOptDnp" type="text" inputmode="decimal" autocomplete="off"></label>
+      </div>
+      <div class="wizard-nav">
+        <button class="btn btn-primary" id="btnEntOptGuardar" type="button">Guardar optometría</button>
+      </div>
+      <div id="entOptError" class="error" hidden></div>
+    </div>
     <h3>Firma digital — recepción de los lentes *</h3>
     <p class="hint">El cliente firma confirmando que recibió sus lentes. Prueba de entrega: si luego dice que no los recibió, se le muestra su firma.</p>
     <canvas id="entregaFirma" class="firma-pad" width="600" height="220"></canvas>
@@ -449,6 +485,10 @@
 </nav>
 
 <div id="banner" class="banner" hidden></div>
+<div id="lightbox" hidden>
+  <img id="lightboxImg" alt="Imagen del expediente">
+  <span class="lightbox-cerrar">Toca para cerrar</span>
+</div>
 <script src="app.js"></script>
 </body>
 </html>
